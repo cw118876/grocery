@@ -6,16 +6,12 @@
 
 namespace coro {
 namespace detail {
-template <typename T, typename = void>
-struct is_coroutine_handle {
-  static constexpr bool value = false;
-};
 
 template <typename T>
-struct is_coroutine_handle<
-    T, std::is_convertible_v<T, std::coroutine_handle<void>>> {
-  static constexpr bool value = true;
-};
+using is_coroutine_handle = std::is_convertible<T, std::coroutine_handle<>>;
+
+template <typename T>
+inline constexpr bool is_coroutine_handle_v = is_coroutine_handle<T>::value;
 
 // three difference return version for await_suspend:
 // bool, void, coroutine
@@ -24,20 +20,26 @@ struct is_valid_await_suspend_return_value
     : std::disjunction<std::is_void<T>, std::is_same<T, bool>,
                        is_coroutine_handle<T>> {};
 
-template <typename T, typename void>
-struct is_awaiter {
-    static constexpr bool value = false;
-}
+template <typename T, typename = std::void_t<>>
+struct has_awaiter_interface : std::false_type {};
 
 template <typename T>
-struct is_awaiter<T, std::void_t<
-   decltype(std::declval<T>().await_ready()),
-   decltype(std::declval<T>().await_suspend(std::declval<std::coroutine_handle<void>>())),
-   decltype(std::declval<T>().await_resume()),
-   
-  >>{
-    static constexpr bool value = false;
-}
+struct has_awaiter_interface<
+    T, std::void_t<decltype(std::declval<T>().await_ready()),
+                   decltype(std::declval<T>().await_suspend(
+                       std::declval<std::coroutine_handle<void>>())),
+                   decltype(std::declval<T>().await_resume())>>
+    : std::true_type {};
+
+template <typename T>
+struct is_awaiter
+    : std::conjunction<detail::has_awaiter_interface<T>,
+                       std::is_constructible<
+                           bool, decltype(std::declval<T>().await_ready())>,
+                       detail::is_valid_await_suspend_return_value<
+                           decltype(std::declval<T>().await_suspend(
+                               std::declval<std::coroutine_handle<void>>()))>> {
+};
 
 }  // namespace detail
 }  // namespace coro
