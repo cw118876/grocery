@@ -1,5 +1,5 @@
-#ifndef CPPCORO_DETAIL_TRAITS_GET_AWAITER_H_
-#define CPPCORO_DETAIL_TRAITS_GET_AWAITER_H_
+#ifndef CPPCORO_DETAIL_TRAITS_GET_AWAITER_HPP_
+#define CPPCORO_DETAIL_TRAITS_GET_AWAITER_HPP_
 
 #include <type_traits>
 #include <utility>
@@ -45,4 +45,4 @@ auto get_awaiter(T&& value) noexcept(
 }  // namespace detail
 }  // namespace coro
 
-#endif  // CPPCORO_DETAIL_TRAITS_GET_AWAITER_H_
+#endif  // CPPCORO_DETAIL_TRAITS_GET_AWAITER_HPP_

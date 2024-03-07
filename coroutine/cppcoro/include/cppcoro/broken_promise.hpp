@@ -1,5 +1,5 @@
-#ifndef CPPCORO_BROKEN_PROMISE_H_
-#define CPPCORO_BROKEN_PROMISE_H_
+#ifndef CPPCORO_BROKEN_PROMISE_HPP_
+#define CPPCORO_BROKEN_PROMISE_HPP_
 
 #include <stdexcept>
 
@@ -13,4 +13,4 @@ class broken_promise : public std::logic_error {
 };
 }  // namespace coro
 
-#endif  // CPPCORO_BROKEN_PROMISE_H_
+#endif  // CPPCORO_BROKEN_PROMISE_HPP_

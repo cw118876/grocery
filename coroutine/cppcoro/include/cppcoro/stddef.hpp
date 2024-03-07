@@ -1,5 +1,5 @@
-#ifndef CPPCORO_STDDEF_H_
-#define CPPCORO_STDDEF_H_
+#ifndef CPPCORO_STDDEF_HPP_
+#define CPPCORO_STDDEF_HPP_
 
 
 #define CPPCORO_ASSUME(x) __attribute__((__assume__(x)))
@@ -7,4 +7,4 @@
 #define CPPCORO_INLINE  __attribute__((always_inline))
 
 
-#endif   // CPPCORO_STDDEF_H_
+#endif   // CPPCORO_STDDEF_HPP_

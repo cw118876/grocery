@@ -1,5 +1,5 @@
-#ifndef CPPCORO_DETAIL_TRAITS_IS_AWAITER_H_
-#define CPPCORO_DETAIL_TRAITS_IS_AWAITER_H_
+#ifndef CPPCORO_DETAIL_TRAITS_IS_AWAITER_HPP_
+#define CPPCORO_DETAIL_TRAITS_IS_AWAITER_HPP_
 
 #include <coroutine>
 #include <type_traits>
@@ -44,4 +44,4 @@ struct is_awaiter
 }  // namespace detail
 }  // namespace coro
 
-#endif  // CPPCORO_DETAIL_TRAITS_IS_AWAITER_H_
+#endif  // CPPCORO_DETAIL_TRAITS_IS_AWAITER_HPP_

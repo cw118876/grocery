@@ -1,5 +1,5 @@
-#ifndef CPPCORO_DETAIL_TRAITS_ANY_H_
-#define CPPCORO_DETAIL_TRAITS_ANY_H_
+#ifndef CPPCORO_DETAIL_TRAITS_ANY_HPP_
+#define CPPCORO_DETAIL_TRAITS_ANY_HPP_
 
 namespace coro {
 namespace detail {
@@ -12,4 +12,4 @@ struct any {
 }  // namespace detail
 }  // namespace coro
 
-#endif  // CPPCORO_DETAIL_TRAITS_ANY_H_
+#endif  // CPPCORO_DETAIL_TRAITS_ANY_HPP_
