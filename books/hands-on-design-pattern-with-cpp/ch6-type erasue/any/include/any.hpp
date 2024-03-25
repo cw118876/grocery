@@ -121,7 +121,7 @@ class any {
           std::is_copy_constructible_v<Tp>>>
   any(std::in_place_type<ValueType>, std::initializer_list<U> u,
       Args&&... args);
-  ~any() {this->reset();}
+  ~any() { this->reset(); }
 
   any& operator=(const any& other) {
     any(other).swap(*this);
@@ -133,37 +133,36 @@ class any {
   }
 
   template <class ValueType,
-            class Tp = std::decay_t<ValueType>
-            class = std::enable_if_t<!std::is_same_v<Tp, any> && std::is_copy_constructible_v<Tp>>>
+            class Tp = std::decay_t<ValueType> class = std::enable_if_t<
+                !std::is_same_v<Tp, any> && std::is_copy_constructible_v<Tp>>>
   any& operator=(ValueType&& rhs);
 
-  template <class ValueType,
-            class... Args,
-            class Tp = std::decay_t<ValueType>,
-            class = std::enable_if_t<std::is_copy_constructible_v<Tp, Args...> && std::is_copy_constructible_v<Tp>>>
+  template <
+      class ValueType, class... Args, class Tp = std::decay_t<ValueType>,
+      class = std::enable_if_t<std::is_copy_constructible_v<Tp, Args...> &&
+                               std::is_copy_constructible_v<Tp>>>
   Tp& emplace(Args&&... args);
-  
-  template <class ValueType,
-            class U,
-            class... Args,
-            class Tp = std::decay_t<ValueType>,
-            class = std::enable_if_t<std::is_copy_constructible_v<Tp, std::initializer_list<U>, Args...> &&
-                                     std::is_copy_constructible_v<Tp>>>
-  Tp& emplace(std::initializer_list<U> u, Args&&... args);
 
+  template <
+      class ValueType, class U, class... Args,
+      class Tp = std::decay_t<ValueType>,
+      class = std::enable_if_t<
+          std::is_copy_constructible_v<Tp, std::initializer_list<U>, Args...> &&
+          std::is_copy_constructible_v<Tp>>>
+  Tp& emplace(std::initializer_list<U> u, Args&&... args);
 
   void reset() noexcept {
     if (h_) {
-        call(Action::Destroy);
+      call(Action::Destroy);
     }
   }
   void swap(any& other) noexcept;
-  bool has_value() const noexcept {return h_ == nullptr;}
+  bool has_value() const noexcept { return h_ == nullptr; }
   const type_info& type() const noexcept {
     if (h_) {
-        return *static_cast<const type_info*>(this->call(Action::TypeInfo));
+      return *static_cast<const type_info*>(this->call(Action::TypeInfo));
     } else {
-        return typeid(void);
+      return typeid(void);
     }
   }
 
@@ -197,12 +196,53 @@ class any {
   HandlerFuncPtr h_ = nullptr;
 };
 
-
 namespace any_impl {
 
+template <class Tp>
+struct SmallHandler {
+    using Alloc = std::allocator<Tp>;
+    using ATraits = std::allocator_traits<Alloc>;
+  static void* handle(Action act, const any* this, any* other,
+                      const type_info* info, const void* fallback_info) {
+    switch (act) {
+      case Action::Destroy:
+        destroy(const_cast<any&>(*this));
+        return nullptr;
+      case Action::Copy:
+        copy(*this, *other);
+        return nullptr;
+      case Action::Move:
+        move(*this, *other);
+        return nullptr;
+      case Action::Get:
+        return get(const_cast<any&>(*this), info, fallback_info);
+      case Action::TypeInfo:
+        return typeinfo();
+    }
+    __builtin_unreachable();
+  }
+
+  template <class... Args>
+  static Tp& create(any& dst, Args&&... args) {
+    Alloc a;
+    Tp* p = static_cast<Tp*>(static_cast<void*>(self.s_.buf_));
+    ATraits::construct(a, p, std::forward<Args>(args)...);
+    dst.h_ = &SmallHandler::handle;
+    return *p;
+
+  }
+  static void destroy(any& self) {
+    Alloc a;
+    Tp* p = static_cast<Tp*>(static_cast<void*>(self.s_.buf_));
+    ATraits::destroy(a, p);
+    self.h_ = nullptr;
+  }
+};
+
+template <class Tp>
+struct LargeHandle {};
 
 }  // namespace any_impl
-
 
 }  // namespace mystd
 
