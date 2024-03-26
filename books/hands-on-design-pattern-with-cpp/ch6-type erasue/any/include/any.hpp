@@ -32,9 +32,9 @@ T any_cast(any& operand);
 template <class T>
 T any_cast(any&& operand);
 template <class T>
-const T* any(const any* operand) noexcept;
+const T* any_cast(const any* operand) noexcept;
 template <class T>
-T* any(any* operand) noexcept;
+T* any_cast(any* operand) noexcept;
 
 /// @brief constructs an any object of type T, passing the provided arguments to
 /// T's constructor
@@ -111,7 +111,7 @@ class any {
   template <class ValueType, class... Args, class Tp = std::decay_t<ValueType>,
             class = std::enable_if_t<std::is_constructible_v<Tp, Args...> &&
                                      std::is_copy_constructible_v<Tp>>>
-  any(std::in_place_type<ValueType>, Args&&... args);
+  any(std::in_place_type_t<ValueType>, Args&&... args);
 
   template <
       class ValueType, class U, class... Args,
@@ -119,7 +119,7 @@ class any {
       class = std::enable_if_t<
           std::is_constructible_v<Tp, std::initializer_list<U>, Args...> &&
           std::is_copy_constructible_v<Tp>>>
-  any(std::in_place_type<ValueType>, std::initializer_list<U> u,
+  any(std::in_place_type_t<ValueType>, std::initializer_list<U> u,
       Args&&... args);
   ~any() { this->reset(); }
 
@@ -200,8 +200,8 @@ namespace any_impl {
 
 template <class Tp>
 struct SmallHandler {
-    using Alloc = std::allocator<Tp>;
-    using ATraits = std::allocator_traits<Alloc>;
+  using Alloc = std::allocator<Tp>;
+  using ATraits = std::allocator_traits<Alloc>;
   static void* handle(Action act, const any* this, any* other,
                       const type_info* info, const void* fallback_info) {
     switch (act) {
@@ -229,7 +229,6 @@ struct SmallHandler {
     ATraits::construct(a, p, std::forward<Args>(args)...);
     dst.h_ = &SmallHandler::handle;
     return *p;
-
   }
   static void destroy(any& self) {
     Alloc a;
@@ -237,12 +236,193 @@ struct SmallHandler {
     ATraits::destroy(a, p);
     self.h_ = nullptr;
   }
+
+  static void copy(const any& this, any& dst) {
+    SmallHandler::create(
+        dst, *static_cast<const Tp*>(static_cast<const void*>(&this.s_.buf_)));
+  }
+  static void move(any& this, any& dst) {
+    SmallHandler::create(
+        dst, std::move(*static_cast<Tp*>(static_cast<void*>(&this.s_.buf_))));
+  }
+  static void* get(any& this, const type_info* info, const void* fallback_id) {
+    if (any_impl::compare_typeid<Tp>(info, fallback_id)) {
+      return static_cast<void*>(&this.s_.buf_);
+    }
+    return nullptr;
+  }
+  static void* typeinfo() {
+    return const_cast<void*>(static_cast<const void*>(&typeid(Tp)));
+  }
 };
 
 template <class Tp>
-struct LargeHandle {};
+struct LargeHandle {
+  using Alloc = std::allocator<Tp>;
+  using ATraits = std::allocator_traits<Alloc>;
+  static void* handle(Action act, const any* this, any* other,
+                      const type_info* info, const void* fallback_info) {
+    switch (act) {
+      case Action::Destroy:
+        destroy(const_cast<any&>(*this));
+        return nullptr;
+      case Action::Copy:
+        copy(*this, *other);
+        return nullptr;
+      case Action::Move:
+        move(*this, *other);
+        return nullptr;
+      case Action::Get:
+        return get(const_cast<any&>(*this), info, fallback_info);
+      case Action::TypeInfo:
+        return typeinfo();
+    }
+    __builtin_unreachable();
+  }
+  template <class... Args>
+  static Tp& create(any& dst, Args&&... args) {
+    Alloc a;
+    Tp* p = ATraits::allocate(a, sizeof(Tp));
+    ATraits::construct(a, p, std::forward<Args>(args)...);
+    dst.h_ = &LargeHandle::handle;
+    dst.s_.ptr_ = static_cast<void*>(p);
+    return *p;
+  }
+  static void destroy(any& self) {
+    Alloc a;
+    Tp* p = static_cast<Tp*>(self.s_.ptr_);
+    ATraits::destroy(a, p);
+    ATraits::deallocate(a, p, sizeof(Tp));
+    self.h_ = nullptr;
+  }
+
+  static void copy(const any& this, any& dst) {
+    LargeHandle::create(
+        dst, *static_cast<const Tp*>(static_cast<const void*>(&this.s_.buf_)));
+  }
+  static void move(any& this, any& dst) {
+    dst.s_.ptr_ = std::exchange(this.s_.ptr_, nullptr);
+    dst.h_ = std::exchange(this.h_, nullptr);
+  }
+  static void* get(any& this, const type_info* info, const void* fallback_id) {
+    if (any_impl::compare_typeid<Tp>(info, fallback_id)) {
+      return static_cast<void*>(&this.s_.buf_);
+    }
+    return nullptr;
+  }
+  static void* typeinfo() {
+    return const_cast<void*>(static_cast<const void*>(&typeid(Tp)));
+  }
+};
 
 }  // namespace any_impl
+
+template <class ValueType, class Tp, class>
+any::any(ValueType&& v): h_{nullptr} {
+  any_impl::Handler<Tp>::create(*this, std::forward<ValueType>(v));
+}
+
+
+template <class ValueType, class... Args, class Tp, class>
+any::any(std::in_place_type_t<ValueType>, Args&&... args) {
+  any_impl::Handler<Tp>::create(*this, std::forward<Args>(args)...);
+}
+
+template <class ValueType, class Up, class... Args, class Tp, class>
+any::any(std::in_place_type_t<ValueType>, std::initializer_list<Up> u, Args&&... args) {
+  any_impl:::Handler<Tp>::create(*this, u, std::forward<Args>(args)...);
+}
+
+template <class ValueType, class, class>
+inline any& any::operator=(Value&& v) {
+  any(std::forward<ValueType>(v)).swap(*this);
+  return *this;
+}
+
+template <class ValueType, class... Args, class Tp, class>
+inline Tp& any::emplace(Args&&... args) {
+  reset();
+  return any_impl::create(*this, std::forward<Args>(args)...);
+}
+
+template <class ValueType, class Up, class... Args, class Tp, class>
+inline Tp& any::emplace(std::initializer_list<Up> up, Args&&... args) {
+  reset();
+  return any_impl::create(*this, up, std::forward<Args>(args)...);
+}
+
+inline void any::swap(any& other) noexcept {
+  if (this == std::addressof(other))  {
+    return;
+  }
+  if (h_ && other.h_) {
+    any tmp;
+    other.call(Action::Move, &tmp);
+    this->calss(Action::Move, &other);
+    tmp.call(Action::Move, this);
+  } else if (h_) {
+    this->call(Action::Move, &other);
+  } else if (other.h_) {
+    other.call(Action::Move, this);
+  }
+}
+
+inline void swap(any& lhs, any& rhs) noexcept {
+  lhs.swap(rhs);
+}
+
+template <class T, class... Args>
+any make_any(Args&&... args) {
+  return any(std::in_place_type_t<T>, std::forward<Args>(args)...);
+}
+template <class T, class U, class... Args>
+any make_any(std::initializer_list<U> il, Args&&... args) {
+  return any(std::in_place_type_t<T>, il, std::forward<Args>(args)...);
+}
+
+
+template <class ValueType>
+ValueType any_cast(const any& operand) {
+  using RawType = std::remove_cvref_t<ValueType>;
+  static_assert(std::is_constructible_v<ValueType, const RawType&>,
+                "ValueType is required to be a const lvalue reference "
+                "or a CopyConstructible type");
+  auto tmp = any_cast<const RawType>(std::addressof(v));
+  if (tmp == nullptr) {
+    __throw_bad_any_cast();
+  }
+  return static_cast<ValueType>(*tmp);
+}
+template <class ValueType>
+ValueType any_cast(any& operand) {
+   using RawType = std::remove_cvref_t<ValueType>;
+  static_assert(std::is_constructible_v<ValueType, RawType&>,
+                "ValueType is required to be a const lvalue reference "
+                "or a CopyConstructible type");
+  auto tmp = any_cast<RawType>(std::addressof(v));
+  if (tmp == nullptr) {
+    __throw_bad_any_cast();
+  }
+  return static_cast<ValueType>(*tmp);
+
+}
+template <class ValueType>
+ValueType any_cast(any&& operand) {
+  using RawType = std::remove_cvref_t<ValueType>;
+  static_assert(std::is_constructible_v<ValueType, RawType>,
+                "ValueType is required to be a const rvalue reference "
+                "or a CopyConstructible type");
+  auto tmp = any_cast<RawType>(std::addressof(v));
+  if (tmp == nullptr) {
+    __throw_bad_any_cast();
+  }
+  return static_cast<ValueType>(std::move(*tmp));
+
+}
+template <class ValueType>
+const ValueType* any_cast(const any* operand) noexcept;
+template <class ValueType>
+ValueType* any_cast(any* operand) noexcept;
 
 }  // namespace mystd
 
