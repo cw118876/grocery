@@ -12,14 +12,14 @@
 
 namespace mystd {
 
-class bad_any_cast : public {
+class bad_any_cast : public bad_cast{
  public:
   const char* what() noexcept override;
 };
 
 class any;
 
-inline void __throw_bad_any_cast { throw bad_any_cast{}; }
+inline void throw_bad_any_cast() { throw bad_any_cast{}; }
 
 /// @brief performs type-safe access to the contained object.
 /// @tparam T
@@ -387,9 +387,9 @@ ValueType any_cast(const any& operand) {
   static_assert(std::is_constructible_v<ValueType, const RawType&>,
                 "ValueType is required to be a const lvalue reference "
                 "or a CopyConstructible type");
-  auto tmp = any_cast<const RawType>(std::addressof(v));
+  auto tmp = any_cast<const RawType>(std::addressof(operand));
   if (tmp == nullptr) {
-    __throw_bad_any_cast();
+    throw_bad_any_cast();
   }
   return static_cast<ValueType>(*tmp);
 }
@@ -399,9 +399,9 @@ ValueType any_cast(any& operand) {
   static_assert(std::is_constructible_v<ValueType, RawType&>,
                 "ValueType is required to be a const lvalue reference "
                 "or a CopyConstructible type");
-  auto tmp = any_cast<RawType>(std::addressof(v));
+  auto tmp = any_cast<RawType>(std::addressof(operand));
   if (tmp == nullptr) {
-    __throw_bad_any_cast();
+    throw_bad_any_cast();
   }
   return static_cast<ValueType>(*tmp);
 
@@ -412,17 +412,43 @@ ValueType any_cast(any&& operand) {
   static_assert(std::is_constructible_v<ValueType, RawType>,
                 "ValueType is required to be a const rvalue reference "
                 "or a CopyConstructible type");
-  auto tmp = any_cast<RawType>(std::addressof(v));
+  auto tmp = any_cast<RawType>(std::addressof(operand));
   if (tmp == nullptr) {
-    __throw_bad_any_cast();
+    throw_bad_any_cast();
   }
   return static_cast<ValueType>(std::move(*tmp));
 
 }
 template <class ValueType>
-const ValueType* any_cast(const any* operand) noexcept;
+const ValueType* any_cast(const any* operand) noexcept {
+  static_assert(!std::is_void_v<ValueType>, "ValueType may not be void.");
+  static_assert(!std::is_reference_v<ValueType>, "ValueType may not be reference.");
+  return any_cast<ValueType>(const_cast<any*>(operand));
+}
+
+template <class RetType>
+inline RetType pointer_or_func_cast(void* p, /*IsFunction*/ std::false_type) noexcept {
+  return static_cast<RetType>(p);
+}
+
+template <class RetType>
+inline RetType pointer_or_func_cast(void* p, std::true_type) noexcept {
+  return nullptr;
+}
+
 template <class ValueType>
-ValueType* any_cast(any* operand) noexcept;
+ValueType* any_cast(any* operand) noexcept {
+  using any_impl::Action;
+  static_assert(!std::is_void_v<ValueType>, "ValueType may not be void.");
+  static_assert(!std::is_reference_v<ValueType>, "ValueType may not be reference.");
+  using RetType = std::add_pointer_t<ValueType>;
+  if (operand && operand->h_) {
+    void *p = operand->call(Action::Get, &typeid(ValueType), any_impl::get_fallback_typeid<ValueType>());
+    return pointer_or_func_cast<RetType>(p, std::is_function_v<ValueType>);
+  } else {
+    return nullptr;
+  }
+}
 
 }  // namespace mystd
 

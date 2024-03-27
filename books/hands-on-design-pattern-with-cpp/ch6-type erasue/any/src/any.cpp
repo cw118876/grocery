@@ -3,7 +3,7 @@
 namespace mystd {
 
 
-const char* bad_any_cast::what noexcept  {
+const char* bad_any_cast::what() noexcept  {
     return "bad any cast";
 }
 
