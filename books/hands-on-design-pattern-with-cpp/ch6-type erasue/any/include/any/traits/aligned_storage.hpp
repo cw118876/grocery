@@ -11,7 +11,7 @@ namespace mystd {
 
 template <class T>
 struct aligned_type {
-  static constexpr size_t value = alignas(T);
+  static constexpr size_t value = alignof(T);
   using type = T;
 };
 
@@ -50,14 +50,14 @@ struct find_pod;
 
 template <class Hp, size_t Align>
 struct find_pod<type_list<Hp, nat>, Align> {
-  using type = std::enable_if_t<Align == Hp::value, typename Hp::type,
-                                fallback_overaligned<Align>>;
+  using type = std::conditional_t<Align == Hp::value, typename Hp::type,
+                                  fallback_overaligned<Align>>;
 };
 
 template <class Hp, class Tp, size_t Align>
 struct find_pod<type_list<Hp, Tp>, Align> {
-  using type = std::enable_if_t<Align == Hp::value, typename Hp::type,
-                                typename find_pod<Tp, Align>::value>;
+  using type = std::conditional_t<Align == Hp::value, typename Hp::type,
+                                  typename find_pod<Tp, Align>::value>;
 };
 
 template <class TL, size_t Len>
@@ -69,12 +69,12 @@ struct find_max_align<type_list<Hp, nat>, Len>
 
 template <size_t Len, size_t A1, size_t A2>
 struct select_align {
- public:
-  static constexpr size_t value = Len < max_ ? min_ : max_;
-
  private:
   static constexpr size_t min_ = A1 < A2 ? A1 : A2;
   static constexpr size_t max_ = A1 < A2 ? A2 : A1;
+
+ public:
+  static constexpr size_t value = Len < max_ ? min_ : max_;
 };
 
 template <class Hp, class Tp, size_t Size>
