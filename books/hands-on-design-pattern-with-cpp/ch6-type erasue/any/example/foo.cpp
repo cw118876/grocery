@@ -15,7 +15,7 @@ void processAny(const mystd::any& value) {
             std::cout << "Unsupported type!" << std::endl;
         }
     } else {
-        std::cout << "No value stored in std::any." << std::endl;
+        std::cout << "No value stored in mystd::any." << std::endl;
     }
 }
 

@@ -71,7 +71,7 @@ struct unique_typeinfo {
 
 template <class Tp>
 inline constexpr const void* get_fallback_typeid() {
-  return static_cast<void*>(
+  return static_cast<const void*>(
       &unique_typeinfo<std::remove_cv_t<std::remove_reference_t<Tp>>>::id);
 }
 
@@ -159,7 +159,7 @@ class any {
     }
   }
   void swap(any& other) noexcept;
-  bool has_value() const noexcept { return h_ == nullptr; }
+  bool has_value() const noexcept { return h_ != nullptr; }
   const std::type_info& type() const noexcept {
     if (h_) {
       return *static_cast<const std::type_info*>(this->call(Action::TypeInfo));
@@ -179,13 +179,13 @@ class any {
     any_impl::Buffer buf_;
   };
   void* call(Action a, any* other = nullptr,
-            const std::type_info* info = nullptr,
-            const void* fallback_info = nullptr) {
+             const std::type_info* info = nullptr,
+             const void* fallback_info = nullptr) {
     return h_(a, this, other, info, fallback_info);
   }
   void* call(Action a, any* other = nullptr,
-            const std::type_info* info = nullptr,
-            const void* fallback_info = nullptr) const {
+             const std::type_info* info = nullptr,
+             const void* fallback_info = nullptr) const {
     return h_(a, this, other, info, fallback_info);
   }
   template <class>
@@ -197,6 +197,16 @@ class any {
   friend const T* any(const any* operand) noexcept;
   template <class T>
   friend T* any(any* operand) noexcept;
+  template <class T>
+  friend T any_cast(const any& operand);
+  template <class T>
+  friend T any_cast(any& operand);
+  template <class T>
+  friend T any_cast(any&& operand);
+  template <class T>
+  const T* any_cast(const any* operand) noexcept;
+  template <class T>
+  friend T* any_cast(any* operand) noexcept;
   Storage s_;
   HandlerFuncPtr h_ = nullptr;
 };
@@ -449,9 +459,9 @@ ValueType* any_cast(any* operand) noexcept {
                 "ValueType may not be reference.");
   using RetType = std::add_pointer_t<ValueType>;
   if (operand && operand->h_) {
-    void* p = operand->call(Action::Get, &typeid(ValueType),
+    void* p = operand->call(Action::Get, nullptr, &typeid(ValueType),
                             any_impl::get_fallback_typeid<ValueType>());
-    return pointer_or_func_cast<RetType>(p, std::is_function_v<ValueType>);
+    return pointer_or_func_cast<RetType>(p, std::is_function<ValueType>{});
   } else {
     return nullptr;
   }
