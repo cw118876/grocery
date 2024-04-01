@@ -315,7 +315,7 @@ struct LargeHandle {
 
   static void copy(const any& self, any& dst) {
     LargeHandle::create(
-        dst, *static_cast<const Tp*>(static_cast<const void*>(&self.s_.buf_)));
+        dst, *static_cast<const Tp*>(static_cast<const void*>(self.s_.ptr_)));
   }
   static void move(any& self, any& dst) {
     dst.s_.ptr_ = std::exchange(self.s_.ptr_, nullptr);
@@ -324,7 +324,7 @@ struct LargeHandle {
   static void* get(any& self, const std::type_info* info,
                    const void* fallback_id) {
     if (any_impl::compare_typeid<Tp>(info, fallback_id)) {
-      return static_cast<void*>(&self.s_.buf_);
+      return static_cast<void*>(self.s_.ptr_);
     }
     return nullptr;
   }

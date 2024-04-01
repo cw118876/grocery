@@ -11,6 +11,10 @@ target_compile_features(foo
   PRIVATE cxx_std_20
 )
 
+target_compile_options(foo 
+ PRIVATE -g 
+)
+
 target_include_directories(foo
  PRIVATE ${CMAKE_SOURCE_DIR}/include
 )
