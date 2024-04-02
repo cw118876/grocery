@@ -57,7 +57,7 @@ struct find_pod<type_list<Hp, nat>, Align> {
 template <class Hp, class Tp, size_t Align>
 struct find_pod<type_list<Hp, Tp>, Align> {
   using type = std::conditional_t<Align == Hp::value, typename Hp::type,
-                                  typename find_pod<Tp, Align>::value>;
+                                  typename find_pod<Tp, Align>::type>;
 };
 
 template <class TL, size_t Len>

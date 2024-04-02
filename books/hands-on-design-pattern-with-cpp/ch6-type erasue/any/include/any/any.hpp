@@ -50,7 +50,7 @@ template <class T, class U, class... Args>
 any make_any(std::initializer_list<U> il, Args&&... args);
 
 namespace any_impl {
-using Buffer = aligned_storage<3 * sizeof(void*), alignof(void*)>;
+using Buffer = aligned_storage_t<3 * sizeof(void*), alignof(void*)>;
 template <class T>
 using IsSmallObject =
     std::integral_constant<bool, sizeof(T) < sizeof(Buffer) &&
