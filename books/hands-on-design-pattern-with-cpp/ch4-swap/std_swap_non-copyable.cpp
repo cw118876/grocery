@@ -15,10 +15,10 @@ class A {
   int i_;
 };
 
-
 /*
  From: https://en.cppreference.com/w/cpp/algorithm/swap
- T must meet the requirements of CopyConstructible and CopyAssignable(until C++11)MoveConstructible and MoveAssignable(since C++11)
+ T must meet the requirements of CopyConstructible and CopyAssignable(until
+ C++11)MoveConstructible and MoveAssignable(since C++11)
 
  */
 

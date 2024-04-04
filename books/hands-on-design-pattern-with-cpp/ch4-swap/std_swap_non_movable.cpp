@@ -11,7 +11,7 @@ class A {
     return *this;
   }
   A(A&&) = delete;
-  A& operator=(A&& rhs)= delete;
+  A& operator=(A&& rhs) = delete;
   friend std::ostream& operator<<(std::ostream& os, const A& rhs) {
     os << rhs.i_;
     return os;

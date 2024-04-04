@@ -21,7 +21,9 @@ class bad_any_cast : public std::bad_cast {
 
 class any;
 
-inline void throw_bad_any_cast() { throw bad_any_cast{}; }
+inline void throw_bad_any_cast() {
+  throw bad_any_cast{};
+}
 
 /// @brief performs type-safe access to the contained object.
 /// @tparam T
@@ -53,9 +55,10 @@ namespace any_impl {
 using Buffer = aligned_storage_t<3 * sizeof(void*), alignof(void*)>;
 template <class T>
 using IsSmallObject =
-    std::integral_constant<bool, sizeof(T) < sizeof(Buffer) &&
-                                     alignof(Buffer) % alignof(T) == 0 &&
-                                     std::is_nothrow_move_constructible_v<T>>;
+    std::integral_constant<bool,
+                           sizeof(T) < sizeof(Buffer) &&
+                               alignof(Buffer) % alignof(T) == 0 &&
+                               std::is_nothrow_move_constructible_v<T>>;
 enum class Action { Destroy, Copy, Move, Get, TypeInfo };
 
 template <class Tp>
@@ -84,8 +87,8 @@ inline bool compare_typeid(const std::type_info* id, const void* fallback_id) {
 }
 
 template <class Tp>
-using Handler = std::conditional_t<IsSmallObject<Tp>::value, SmallHandler<Tp>,
-                                   LargeHandle<Tp>>;
+using Handler = std::
+    conditional_t<IsSmallObject<Tp>::value, SmallHandler<Tp>, LargeHandle<Tp>>;
 
 }  // namespace any_impl
 
@@ -104,24 +107,30 @@ class any {
     }
   }
 
-  template <class ValueType, class Tp = std::decay_t<ValueType>,
+  template <class ValueType,
+            class Tp = std::decay_t<ValueType>,
             class = std::enable_if_t<!std::is_same_v<Tp, any> &&
                                      !std::__is_in_place_type_v<ValueType> &&
                                      std::is_copy_constructible_v<Tp>>>
   any(ValueType&& value);
 
-  template <class ValueType, class... Args, class Tp = std::decay_t<ValueType>,
+  template <class ValueType,
+            class... Args,
+            class Tp = std::decay_t<ValueType>,
             class = std::enable_if_t<std::is_constructible_v<Tp, Args...> &&
                                      std::is_copy_constructible_v<Tp>>>
   any(std::in_place_type_t<ValueType>, Args&&... args);
 
   template <
-      class ValueType, class U, class... Args,
+      class ValueType,
+      class U,
+      class... Args,
       class Tp = std::decay_t<ValueType>,
       class = std::enable_if_t<
           std::is_constructible_v<Tp, std::initializer_list<U>, Args...> &&
           std::is_copy_constructible_v<Tp>>>
-  any(std::in_place_type_t<ValueType>, std::initializer_list<U> u,
+  any(std::in_place_type_t<ValueType>,
+      std::initializer_list<U> u,
       Args&&... args);
   ~any() { this->reset(); }
 
@@ -134,19 +143,24 @@ class any {
     return *this;
   }
 
-  template <class ValueType, class Tp = std::decay_t<ValueType>,
+  template <class ValueType,
+            class Tp = std::decay_t<ValueType>,
             class = std::enable_if_t<!std::is_same_v<Tp, any> &&
                                      std::is_copy_constructible_v<Tp>>>
   any& operator=(ValueType&& rhs);
 
   template <
-      class ValueType, class... Args, class Tp = std::decay_t<ValueType>,
+      class ValueType,
+      class... Args,
+      class Tp = std::decay_t<ValueType>,
       class = std::enable_if_t<std::is_copy_constructible_v<Tp, Args...> &&
                                std::is_copy_constructible_v<Tp>>>
   Tp& emplace(Args&&... args);
 
   template <
-      class ValueType, class U, class... Args,
+      class ValueType,
+      class U,
+      class... Args,
       class Tp = std::decay_t<ValueType>,
       class = std::enable_if_t<
           std::is_copy_constructible_v<Tp, std::initializer_list<U>, Args...> &&
@@ -170,7 +184,9 @@ class any {
 
  private:
   using Action = any_impl::Action;
-  using HandlerFuncPtr = void* (*)(Action, const any*, any*,
+  using HandlerFuncPtr = void* (*)(Action,
+                                   const any*,
+                                   any*,
                                    const std::type_info*,
                                    const void* fallback_info);
   union Storage {
@@ -178,12 +194,14 @@ class any {
     void* ptr_;
     any_impl::Buffer buf_;
   };
-  void* call(Action a, any* other = nullptr,
+  void* call(Action a,
+             any* other = nullptr,
              const std::type_info* info = nullptr,
              const void* fallback_info = nullptr) {
     return h_(a, this, other, info, fallback_info);
   }
-  void* call(Action a, any* other = nullptr,
+  void* call(Action a,
+             any* other = nullptr,
              const std::type_info* info = nullptr,
              const void* fallback_info = nullptr) const {
     return h_(a, this, other, info, fallback_info);
@@ -218,8 +236,11 @@ struct SmallHandler {
   using Alloc = std::allocator<Tp>;
   using ATraits = std::allocator_traits<Alloc>;
 
-  static void* handle(Action act, const any* self, any* other,
-                      const std::type_info* info, const void* fallback_info) {
+  static void* handle(Action act,
+                      const any* self,
+                      any* other,
+                      const std::type_info* info,
+                      const void* fallback_info) {
     switch (act) {
       case Action::Destroy:
         destroy(const_cast<any&>(*self));
@@ -261,7 +282,8 @@ struct SmallHandler {
     SmallHandler::create(
         dst, std::move(*static_cast<Tp*>(static_cast<void*>(&self.s_.buf_))));
   }
-  static void* get(any& self, const std::type_info* info,
+  static void* get(any& self,
+                   const std::type_info* info,
                    const void* fallback_id) {
     if (any_impl::compare_typeid<Tp>(info, fallback_id)) {
       return static_cast<void*>(&self.s_.buf_);
@@ -277,8 +299,11 @@ template <class Tp>
 struct LargeHandle {
   using Alloc = std::allocator<Tp>;
   using ATraits = std::allocator_traits<Alloc>;
-  static void* handle(Action act, const any* self, any* other,
-                      const std::type_info* info, const void* fallback_info) {
+  static void* handle(Action act,
+                      const any* self,
+                      any* other,
+                      const std::type_info* info,
+                      const void* fallback_info) {
     switch (act) {
       case Action::Destroy:
         destroy(const_cast<any&>(*self));
@@ -321,7 +346,8 @@ struct LargeHandle {
     dst.s_.ptr_ = std::exchange(self.s_.ptr_, nullptr);
     dst.h_ = std::exchange(self.h_, nullptr);
   }
-  static void* get(any& self, const std::type_info* info,
+  static void* get(any& self,
+                   const std::type_info* info,
                    const void* fallback_id) {
     if (any_impl::compare_typeid<Tp>(info, fallback_id)) {
       return static_cast<void*>(self.s_.ptr_);
@@ -346,7 +372,8 @@ any::any(std::in_place_type_t<ValueType>, Args&&... args) {
 }
 
 template <class ValueType, class Up, class... Args, class Tp, class>
-any::any(std::in_place_type_t<ValueType>, std::initializer_list<Up> u,
+any::any(std::in_place_type_t<ValueType>,
+         std::initializer_list<Up> u,
          Args&&... args) {
   any_impl::Handler<Tp>::create(*this, u, std::forward<Args>(args)...);
 }
@@ -385,7 +412,9 @@ inline void any::swap(any& other) noexcept {
   }
 }
 
-inline void swap(any& lhs, any& rhs) noexcept { lhs.swap(rhs); }
+inline void swap(any& lhs, any& rhs) noexcept {
+  lhs.swap(rhs);
+}
 
 template <class T, class... Args>
 any make_any(Args&&... args) {

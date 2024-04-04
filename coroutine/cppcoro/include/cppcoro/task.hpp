@@ -76,9 +76,8 @@ struct task_promise final : public task_promise_base {
   // https://github.com/lewissbaker/cppcoro/issues/40#issuecomment-326864107
   // don't really understand why.
   // TODO: test
-  using rvalue_type =
-      std::conditional_t<std::is_arithmetic_v<T> || std::is_porint_v<T>, T,
-                         T&&>;
+  using rvalue_type = std::
+      conditional_t<std::is_arithmetic_v<T> || std::is_porint_v<T>, T, T&&>;
   rvalue_type result() && {
     auto index = result_.index();
     if (index == kExceptionIndex) {

@@ -273,7 +273,9 @@ inline task& task::operator=(task&& t) noexcept {
 inline task::awaiter::awaiter(coro::coroutine_handle<promise_type> h) noexcept
     : coro_{h} {}
 
-inline bool task::awaiter::await_ready() noexcept { return false; }
+inline bool task::awaiter::await_ready() noexcept {
+  return false;
+}
 
 inline coro::coroutine_handle<task::promise_type> task::awaiter::await_suspend(
     coro::coroutine_handle<> h) noexcept {
@@ -305,10 +307,10 @@ struct manual_lifetime {
   manual_lifetime& operator=(manual_lifetime&&) = delete;
 
   template <typename Factory>
-    requires std::invocable<Factory&> &&
-             std::same_as<std::invoke_result_t<Factory&>, T>
-  T& construct_from(Factory factory) noexcept(
-      std::is_nothrow_invocable_v<Factory&>) {
+  requires std::invocable<Factory&> &&
+      std::same_as<std::invoke_result_t<Factory&>, T>
+          T& construct_from(Factory factory) noexcept(
+              std::is_nothrow_invocable_v<Factory&>) {
     return *::new (static_cast<void*>(std::addressof(storage_))) T{factory()};
   }
 
@@ -344,7 +346,7 @@ struct destructor_gaurd {
 };
 
 template <typename T>
-  requires std::is_trivially_destructible_v<T>
+requires std::is_trivially_destructible_v<T>
 struct destructor_gaurd<T> {
   explicit destructor_gaurd(manual_lifetime<T>& obj) noexcept {}
   void cancel() noexcept {}
@@ -367,7 +369,9 @@ __coroutine_state* __f_resume(__coroutine_state* s) {
   return const_cast<__coroutine_state*>(&__coroutine_state::__noop_coroutine);
 }
 
-void __f_destory(__coroutine_state* s) { std::cout << "__f_destroy\n"; }
+void __f_destory(__coroutine_state* s) {
+  std::cout << "__f_destroy\n";
+}
 
 // forward declaration
 task f(int x) {
@@ -448,7 +452,7 @@ __coroutine_state* __g_resume(__coroutine_state* s) {
       default:
         std::unreachable();
     }
-  suspend_point_0: {
+  suspend_point_0 : {
     destructor_gaurd tmp1_dtor{state->tmp1_};
     state->tmp1_.get().await_resume();
   }

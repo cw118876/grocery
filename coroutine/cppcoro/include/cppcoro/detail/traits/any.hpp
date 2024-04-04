@@ -6,7 +6,7 @@ namespace detail {
 /// @brief  helper type that can be cast-to from any type
 struct any {
   template <typename T>
-  any(T &&) noexcept {}
+  any(T&&) noexcept {}
 };
 
 }  // namespace detail

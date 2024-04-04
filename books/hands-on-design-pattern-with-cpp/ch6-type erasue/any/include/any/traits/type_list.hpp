@@ -15,7 +15,8 @@ struct type_list {
 /// @tparam TypeList
 /// @tparam Size
 /// @tparam
-template <class TypeList, size_t Size,
+template <class TypeList,
+          size_t Size,
           bool = Size <= sizeof(typename TypeList::Head)>
 struct find_first;
 

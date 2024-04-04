@@ -25,8 +25,10 @@ struct Registry {
   }
   ~Registry() {
     --count;
-    if (prev_) prev_->next_ = next_;
-    if (next_) next_->prev_ = prev_;
+    if (prev_)
+      prev_->next_ = next_;
+    if (next_)
+      next_->prev_ = prev_;
     if (head == static_cast<D*>(this)) {
       head = next_;
     }

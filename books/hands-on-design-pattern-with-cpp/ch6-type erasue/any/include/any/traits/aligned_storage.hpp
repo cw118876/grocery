@@ -50,13 +50,15 @@ struct find_pod;
 
 template <class Hp, size_t Align>
 struct find_pod<type_list<Hp, nat>, Align> {
-  using type = std::conditional_t<Align == Hp::value, typename Hp::type,
+  using type = std::conditional_t<Align == Hp::value,
+                                  typename Hp::type,
                                   fallback_overaligned<Align>>;
 };
 
 template <class Hp, class Tp, size_t Align>
 struct find_pod<type_list<Hp, Tp>, Align> {
-  using type = std::conditional_t<Align == Hp::value, typename Hp::type,
+  using type = std::conditional_t<Align == Hp::value,
+                                  typename Hp::type,
                                   typename find_pod<Tp, Align>::type>;
 };
 
@@ -80,8 +82,9 @@ struct select_align {
 template <class Hp, class Tp, size_t Size>
 struct find_max_align<type_list<Hp, Tp>, Size>
     : public std::integral_constant<
-          size_t, select_align<Size, Hp::value,
-                               find_max_align<Tp, Size>::value>::value> {};
+          size_t,
+          select_align<Size, Hp::value, find_max_align<Tp, Size>::value>::
+              value> {};
 
 template <size_t Size, size_t Align = find_max_align<all_types, Size>::value>
 struct aligned_storage {

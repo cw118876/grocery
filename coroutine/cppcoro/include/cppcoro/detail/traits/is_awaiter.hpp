@@ -17,7 +17,8 @@ inline constexpr bool is_coroutine_handle_v = is_coroutine_handle<T>::value;
 // bool, void, coroutine
 template <typename T>
 struct is_valid_await_suspend_return_value
-    : std::disjunction<std::is_void<T>, std::is_same<T, bool>,
+    : std::disjunction<std::is_void<T>,
+                       std::is_same<T, bool>,
                        is_coroutine_handle<T>> {};
 
 template <typename T, typename = std::void_t<>>
@@ -25,21 +26,22 @@ struct has_awaiter_interface : std::false_type {};
 
 template <typename T>
 struct has_awaiter_interface<
-    T, std::void_t<decltype(std::declval<T>().await_ready()),
-                   decltype(std::declval<T>().await_suspend(
-                       std::declval<std::coroutine_handle<void>>())),
-                   decltype(std::declval<T>().await_resume())>>
-    : std::true_type {};
+    T,
+    std::void_t<decltype(std::declval<T>().await_ready()),
+                decltype(std::declval<T>().await_suspend(
+                    std::declval<std::coroutine_handle<void>>())),
+                decltype(std::declval<T>().await_resume())>> : std::true_type {
+};
 
 template <typename T>
 struct is_awaiter
-    : std::conjunction<detail::has_awaiter_interface<T>,
-                       std::is_constructible<
-                           bool, decltype(std::declval<T>().await_ready())>,
-                       detail::is_valid_await_suspend_return_value<
-                           decltype(std::declval<T>().await_suspend(
-                               std::declval<std::coroutine_handle<void>>()))>> {
-};
+    : std::conjunction<
+          detail::has_awaiter_interface<T>,
+          std::is_constructible<bool,
+                                decltype(std::declval<T>().await_ready())>,
+          detail::is_valid_await_suspend_return_value<
+              decltype(std::declval<T>().await_suspend(
+                  std::declval<std::coroutine_handle<void>>()))>> {};
 
 }  // namespace detail
 }  // namespace coro

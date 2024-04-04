@@ -17,7 +17,9 @@ struct C {
 
 using Vec = std::vector<C>;
 
-C transform(C x) { return C{2 * x.i_}; }
+C transform(C x) {
+  return C{2 * x.i_};
+}
 
 void transform_not_safe(const Vec& in, Vec& out) {
   out.resize(0);

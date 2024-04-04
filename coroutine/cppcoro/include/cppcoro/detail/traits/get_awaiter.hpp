@@ -7,7 +7,6 @@
 #include <cppcoro/detail/traits/any.hpp>
 #include <cppcoro/detail/traits/is_awaiter.hpp>
 
-
 namespace coro {
 namespace detail {
 

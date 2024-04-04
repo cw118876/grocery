@@ -2,9 +2,8 @@
 
 namespace mystd {
 
-
-const char* bad_any_cast::what() const noexcept  {
-    return "bad any cast";
+const char* bad_any_cast::what() const noexcept {
+  return "bad any cast";
 }
 
-} // mystd
+}  // namespace mystd

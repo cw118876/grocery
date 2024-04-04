@@ -8,12 +8,14 @@ int main() {
   {  // OK, member swap
     V v({1, 2, 3, 4});
     std::cout << "Initial v:";
-    for (auto x : v) std::cout << " " << x;
+    for (auto x : v)
+      std::cout << " " << x;
     std::cout << std::endl;
     V t;
     v.swap(t);
     std::cout << "Final v:";
-    for (auto x : v) std::cout << " " << x;
+    for (auto x : v)
+      std::cout << " " << x;
     std::cout << std::endl;
   }
 
@@ -29,23 +31,27 @@ int main() {
   {  // Compiles fine, member function call on a temporary
     V v({1, 2, 3, 4});
     std::cout << "Initial v:";
-    for (auto x : v) std::cout << " " << x;
+    for (auto x : v)
+      std::cout << " " << x;
     std::cout << std::endl;
     V().swap(v);
     std::cout << "Final v:";
-    for (auto x : v) std::cout << " " << x;
+    for (auto x : v)
+      std::cout << " " << x;
     std::cout << std::endl;
   }
 
   {  // OK, non-member swap
     V v({1, 2, 3, 4});
     std::cout << "Initial v:";
-    for (auto x : v) std::cout << " " << x;
+    for (auto x : v)
+      std::cout << " " << x;
     std::cout << std::endl;
     V t;
     swap(v, t);
     std::cout << "Final v:";
-    for (auto x : v) std::cout << " " << x;
+    for (auto x : v)
+      std::cout << " " << x;
     std::cout << std::endl;
   }
 
