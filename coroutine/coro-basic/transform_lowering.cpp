@@ -308,9 +308,9 @@ struct manual_lifetime {
 
   template <typename Factory>
   requires std::invocable<Factory&> &&
-      std::same_as<std::invoke_result_t<Factory&>, T>
-          T& construct_from(Factory factory) noexcept(
-              std::is_nothrow_invocable_v<Factory&>) {
+           std::same_as<std::invoke_result_t<Factory&>, T>
+  T& construct_from(Factory factory) noexcept(
+      std::is_nothrow_invocable_v<Factory&>) {
     return *::new (static_cast<void*>(std::addressof(storage_))) T{factory()};
   }
 
@@ -452,7 +452,7 @@ __coroutine_state* __g_resume(__coroutine_state* s) {
       default:
         std::unreachable();
     }
-  suspend_point_0 : {
+  suspend_point_0: {
     destructor_gaurd tmp1_dtor{state->tmp1_};
     state->tmp1_.get().await_resume();
   }

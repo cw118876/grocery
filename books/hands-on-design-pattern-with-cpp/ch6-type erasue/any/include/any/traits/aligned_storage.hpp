@@ -4,8 +4,8 @@
 #include <cstddef>
 #include <type_traits>
 
-#include "any/traits/nat.hpp"
-#include "any/traits/type_list.hpp"
+#include "./nat.hpp"
+#include "./type_list.hpp"
 
 namespace mystd {
 
