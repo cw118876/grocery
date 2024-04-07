@@ -304,10 +304,10 @@ struct manual_lifetime {
   manual_lifetime& operator==(manual_lifetime&&) = delete;
 
   template <typename Factory>
-    requires std::invocable<Factory&> &&
-             std::same_as<std::invoke_result_t<Factory&>, T>
-  T& construct_from(Factory factory) noexcept(
-      std::is_nothrow_invocable_v<Factory&>) {
+  requires std::invocable<Factory&> &&
+      std::same_as<std::invoke_result_t<Factory&>, T>
+          T& construct_from(Factory factory) noexcept(
+              std::is_nothrow_invocable_v<Factory&>) {
     return *::new (static_cast<void*>(&stroage_)) T{factory()};
   }
 
@@ -340,7 +340,7 @@ struct destructor_guard {
 
 // partial speciliazation for types that don't need their destructors called
 template <typename T>
-  requires std::is_trivially_destructible_v<T>
+requires std::is_trivially_destructible_v<T>
 struct destructor_guard<T> {
   explict destructor_guard(manual_lifetime<T>& obj) noexcept {}
   void cancel() noexcept {}
@@ -426,7 +426,7 @@ __coroutine_state* __g_resume(__coroutine_state* s) {
         goto suspend_point_1;  // add new jump table entry
       default:
         std::unreachable();
-      suspend_point_0: {
+      suspend_point_0 : {
         destructor_guard tmp1_dtor{state->__temp1};
         state->__temp1.get().await_resume();
       }
