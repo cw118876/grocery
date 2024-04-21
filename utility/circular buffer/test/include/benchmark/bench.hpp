@@ -24,7 +24,6 @@ static void pinThread(int cpu) {
   if (cpu < 0) {
     return;
   }
-  return;
   ::cpu_set_t cpuset;
   CPU_ZERO(&cpuset);
   CPU_SET(cpu, &cpuset);

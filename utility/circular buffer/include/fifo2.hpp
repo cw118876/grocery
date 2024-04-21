@@ -1,28 +1,29 @@
-#ifndef UTILITY_FIFO1_HPP_
-#define UTILITY_FIFO1_HPP_
+#ifndef UTILITY_FIFO2_HPP_
+#define UTILITY_FIFO2_HPP_
 
+#include <atomic>
 #include <cassert>
 #include <memory>
 
 // NO-thread safe, cicular FIFO, has data races
 template <class Tp, class Alloc = std::allocator<Tp>>
-class Fifo1 : private Alloc {
+class Fifo2 : private Alloc {
  public:
   using value_type = Tp;
   using pointer_type = Tp*;
   using allocator_traits = std::allocator_traits<Alloc>;
   using size_type = typename allocator_traits::size_type;
-  explicit Fifo1(size_type sz, const Alloc& alloc = Alloc{})
+  explicit Fifo2(size_type sz, const Alloc& alloc = Alloc{})
       : Alloc(alloc),
         capacity_(sz),
         ring_(allocator_traits::allocate(*this, capacity_)) {}
-  Fifo1(const Fifo1&) = delete;
-  Fifo1& operator=(const Fifo1&) = delete;
+  Fifo2(const Fifo2&) = delete;
+  Fifo2& operator=(const Fifo2&) = delete;
 
-  Fifo1(Fifo1&&) = delete;
-  Fifo1& operator=(Fifo1&&) = delete;
+  Fifo2(Fifo2&&) = delete;
+  Fifo2& operator=(Fifo2&&) = delete;
 
-  ~Fifo1() {
+  ~Fifo2() {
     while (!empty()) {
       ring_[popCursor_ % capacity_].~Tp();
       popCursor_++;
@@ -55,10 +56,12 @@ class Fifo1 : private Alloc {
   }
 
  private:
+  using cursor_type = std::atomic<size_type>;
+  static_assert(cursor_type::is_always_lock_free, "size_type should lock-free");
   size_type capacity_;
   pointer_type ring_;
-  size_type pushCursor_{};
-  size_type popCursor_{};
+  cursor_type pushCursor_{};
+  cursor_type popCursor_{};
 };
 
-#endif  // UTILITY_FIFO1_HPP_
+#endif  // UTILITY_FIFO2_HPP_
