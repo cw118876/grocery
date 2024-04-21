@@ -14,7 +14,7 @@ class Fifo1 : private Alloc {
   using size_type = typename allocator_traits::size_type;
   explicit Fifo1(size_type sz, const Alloc& alloc = Alloc{})
       : Alloc(alloc),
-        capacity_(capacity_),
+        capacity_(sz),
         ring_(allocator_traits::allocate(*this, capacity_)) {}
   Fifo1(const Fifo1&) = delete;
   Fifo1& operator=(const Fifo1&) = delete;
