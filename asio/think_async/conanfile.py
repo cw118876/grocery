@@ -32,6 +32,9 @@ class MyLibraryConan(ConanFile):
         cmake = CMake(self, generator="Ninja")
         cmake.verbose = True
         cmake.configure(source_folder=self.source_folder)
+        cmake.definitions["CMAKE_BUILD_TYPE"] = "Release"
+        if self.settings.build_type == "Debug":
+            cmake.definitions["CMAKE_BUILD_TYPE"] = "Debug"
         cmake.build()
         cmake.install()
 

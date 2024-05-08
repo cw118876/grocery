@@ -11,9 +11,9 @@ function do_build() {
     local install_dir=${source_dir}/install
 
     if [ "${build_type}" = "Release" ]; then 
-       conan install . -if ${build_dir} -pr:b x64 -s:b build_type=${build_type} --build
+       conan install . -if ${build_dir} -pr:b x64 -s build_type=${build_type} --build missing
     else 
-       conan install . -if ${build_dir} -pr:b x64 -s:b build_type=${build_type} --build missing
+       conan install . -if ${build_dir} -pr:b x64 -s build_type=${build_type} --build
     fi
     echo -e "conan install finished"
     conan build . -bf ${build_dir} -pf ${install_dir}
@@ -29,9 +29,11 @@ while getopts ":b:c" opt; do
         b)
             case $OPTARG in
                 Release|release)
+                    echo -e "using Release build type"
                     build_type=Release
                     ;;
                 Debug|debug)
+                    echo -e "using Debug build type"
                     build_type=Debug
                     ;;
                 *)
