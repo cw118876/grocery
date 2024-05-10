@@ -30,4 +30,5 @@ if (CMAKE_BUILD_TYPE MATCHES "Debug")
 endif()
 
 
-add_subdirectory(episode1)
+# add_subdirectory(episode1)
+add_subdirectory(episode2)
