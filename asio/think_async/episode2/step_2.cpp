@@ -1,9 +1,10 @@
 #include <array>
+#include <chrono>
 #include <iostream>
 #include <memory>
-#include <chrono>
 
 #include "asio.hpp"
+#include "asio/completion_condition.hpp"
 #include "asio/io_context.hpp"
 #include "asio/steady_timer.hpp"
 #include "asio/write.hpp"
@@ -16,7 +17,9 @@ using namespace std::chrono_literals;
 class Proxy : public std::enable_shared_from_this<Proxy> {
  public:
   explicit Proxy(tcp::socket client)
-      : client_(std::move(client)), server_(client_.get_executor()), watchdog_timer_(client_.get_executor()) {}
+      : client_(std::move(client)),
+        server_(client_.get_executor()),
+        watchdog_timer_(client_.get_executor()) {}
   void connect_to_server(tcp::endpoint target) {
     auto self = shared_from_this();
     self->server_.async_connect(target, [self](std::error_code ec) {
@@ -30,20 +33,18 @@ class Proxy : public std::enable_shared_from_this<Proxy> {
 
  private:
   void stop() {
-    client_.close();
-    server_.close();
+    client_.cancel();
+    server_.cancel();
     watchdog_timer_.cancel();
     stopped_ = true;
   }
-  bool stopped() const {
-    return !client_.is_open() && !server_.is_open();
-  }
+  bool is_stopped() const { return !client_.is_open() && !server_.is_open(); }
 
   void watchdog() {
     auto self = shared_from_this();
     watchdog_timer_.expires_at(deadline_);
     watchdog_timer_.async_wait([self](std::error_code ec) {
-      if (!self->stopped()) {
+      if (!self->is_stopped()) {
         auto now = steady_clock::now();
         if (self->deadline_ > now) {
           self->watchdog();
@@ -58,7 +59,7 @@ class Proxy : public std::enable_shared_from_this<Proxy> {
     auto self = shared_from_this();
     self->server_.async_read_some(buffer(serverToClientBuff_),
                                   [self](std::error_code ec, size_t n) {
-                                    if (!ec) {
+                                    if (!ec && !self->is_stopped()) {
                                       self->write_to_client(n);
                                     } else {
                                       self->stop();
@@ -67,21 +68,30 @@ class Proxy : public std::enable_shared_from_this<Proxy> {
   }
   void write_to_client(size_t n) {
     auto self = shared_from_this();
-    asio::async_write(self->client_, buffer(serverToClientBuff_, n),
-                      [self](std::error_code ec, size_t n) {
-                        if (!ec) {
-                          self->read_from_server();
-                        } else {
-                          self->stop();
-                        }
-                      });
+    asio::async_write(
+        self->client_, buffer(serverToClientBuff_, n),
+        [self](std::error_code ec, size_t n) -> size_t {
+          auto completion_condition = asio::transfer_all();
+          if (!self->is_stopped()) {
+            return completion_condition(ec, n);
+          } else {
+            return 0;
+          }
+        },
+        [self](std::error_code ec, size_t n) {
+          if (!ec) {
+            self->read_from_server();
+          } else {
+            self->stop();
+          }
+        });
   }
   void read_from_client() {
     deadline_ = std::max(deadline_, steady_clock::now() + 10s);
     auto self = shared_from_this();
     self->client_.async_read_some(buffer(clientToServerBuff_),
                                   [self](std::error_code ec, size_t n) {
-                                    if (!ec) {
+                                    if (!ec && !self->is_stopped()) {
                                       self->write_to_server(n);
                                     } else {
                                       self->stop();
@@ -91,14 +101,23 @@ class Proxy : public std::enable_shared_from_this<Proxy> {
 
   void write_to_server(size_t n) {
     auto self = shared_from_this();
-    asio::async_write(self->server_, buffer(clientToServerBuff_, n),
-                      [self](std::error_code ec, size_t n) {
-                        if (!ec) {
-                          self->read_from_client();
-                        } else {
-                          self->stop();
-                        }
-                      });
+    asio::async_write(
+        self->server_, buffer(clientToServerBuff_, n),
+        [self](std::error_code ec, size_t n) -> size_t {
+          auto completion_condition = asio::transfer_all();
+          if (!self->is_stopped()) {
+            return completion_condition(ec, n);
+          } else {
+            return 0;
+          }
+        },
+        [self](std::error_code ec, size_t n) {
+          if (!ec) {
+            self->read_from_client();
+          } else {
+            self->stop();
+          }
+        });
   }
 
  private:
