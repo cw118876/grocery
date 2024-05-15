@@ -2,9 +2,16 @@
 #include <chrono>
 #include <iostream>
 #include <memory>
+#include <system_error>
 
 #include "asio.hpp"
+#include "asio/bind_cancellation_slot.hpp"
+#include "asio/buffer.hpp"
+#include "asio/cancellation_signal.hpp"
 #include "asio/completion_condition.hpp"
+#include "asio/error.hpp"
+#include "asio/experimental/cancellation_condition.hpp"
+#include "asio/experimental/parallel_group.hpp"
 #include "asio/io_context.hpp"
 #include "asio/steady_timer.hpp"
 #include "asio/write.hpp"
@@ -19,7 +26,8 @@ class Proxy : public std::enable_shared_from_this<Proxy> {
   explicit Proxy(tcp::socket client)
       : client_(std::move(client)),
         server_(client_.get_executor()),
-        watchdog_timer_(client_.get_executor()) {}
+        watchdog_timer_(client_.get_executor()),
+        heartbeat_timer_(client_.get_executor()) {}
   void connect_to_server(tcp::endpoint target) {
     auto self = shared_from_this();
     self->server_.async_connect(target, [self](std::error_code ec) {
@@ -33,10 +41,9 @@ class Proxy : public std::enable_shared_from_this<Proxy> {
 
  private:
   void stop() {
-    client_.cancel();
-    server_.cancel();
+    client_.close();
+    server_.close();
     watchdog_timer_.cancel();
-    stopped_ = true;
   }
   bool is_stopped() const { return !client_.is_open() && !server_.is_open(); }
 
@@ -55,43 +62,50 @@ class Proxy : public std::enable_shared_from_this<Proxy> {
     });
   }
   void read_from_server() {
-    deadline_ = std::max(deadline_, steady_clock::now() + 10s);
+    // deadline_ = std::max(deadline_, steady_clock::now() + 10s);
+    heartbeat_timer_.expires_after(10s);
     auto self = shared_from_this();
-    self->server_.async_read_some(buffer(serverToClientBuff_),
-                                  [self](std::error_code ec, size_t n) {
-                                    if (!ec && !self->is_stopped()) {
-                                      self->write_to_client(n);
-                                    } else {
-                                      self->stop();
-                                    }
-                                  });
+    asio::experimental::make_parallel_group(
+        [this](auto token) {
+          return server_.async_read_some(buffer(serverToClientBuff_), token);
+        },
+        [this](auto token) { return heartbeat_timer_.async_wait(token); })
+        .async_wait(
+            asio::experimental::wait_for_one(),
+            [self](std::array<std::size_t, 2> order, std::error_code read_error,
+                   std::size_t n, std::error_code) {
+              switch (order[0]) {
+                case 0:  // read
+                  if (!read_error) {
+                    self->num_hearbeats_ = 0;
+                    self->write_to_client(n);
+                  } else {
+                    self->stop();
+                  }
+                  break;
+                case 1:  // timer
+                  ++self->num_hearbeats_;
+                  self->write_heartbeat_to_client();
+              }
+            });
   }
   void write_to_client(size_t n) {
     auto self = shared_from_this();
-    asio::async_write(
-        self->client_, buffer(serverToClientBuff_, n),
-        [self](std::error_code ec, size_t n) -> size_t {
-          auto completion_condition = asio::transfer_all();
-          if (!self->is_stopped()) {
-            return completion_condition(ec, n);
-          } else {
-            return 0;
-          }
-        },
-        [self](std::error_code ec, size_t n) {
-          if (!ec && !self->is_stopped()) {
-            self->read_from_server();
-          } else {
-            self->stop();
-          }
-        });
+    asio::async_write(self->client_, buffer(serverToClientBuff_, n),
+                      [self](std::error_code ec, size_t n) {
+                        if (!ec) {
+                          self->read_from_server();
+                        } else {
+                          self->stop();
+                        }
+                      });
   }
   void read_from_client() {
     deadline_ = std::max(deadline_, steady_clock::now() + 10s);
     auto self = shared_from_this();
     self->client_.async_read_some(buffer(clientToServerBuff_),
                                   [self](std::error_code ec, size_t n) {
-                                    if (!ec && !self->is_stopped()) {
+                                    if (!ec) {
                                       self->write_to_server(n);
                                     } else {
                                       self->stop();
@@ -101,23 +115,23 @@ class Proxy : public std::enable_shared_from_this<Proxy> {
 
   void write_to_server(size_t n) {
     auto self = shared_from_this();
-    asio::async_write(
-        self->server_, buffer(clientToServerBuff_, n),
-        [self](std::error_code ec, size_t n) -> size_t {
-          auto completion_condition = asio::transfer_all();
-          if (!self->is_stopped()) {
-            return completion_condition(ec, n);
-          } else {
-            return 0;
-          }
-        },
-        [self](std::error_code ec, size_t n) {
-          if (!ec && !self->is_stopped()) {
-            self->read_from_client();
-          } else {
-            self->stop();
-          }
-        });
+    asio::async_write(self->server_, buffer(clientToServerBuff_, n),
+                      [self](std::error_code ec, size_t n) {
+                        if (!ec) {
+                          self->read_from_client();
+                        } else {
+                          self->stop();
+                        }
+                      });
+  }
+
+  void write_heartbeat_to_client() {
+    size_t n = asio::buffer_copy(
+        buffer(serverToClientBuff_),
+        std::array<asio::const_buffer, 3>{
+            buffer("<heartbeat "), buffer(std::to_string(num_hearbeats_)),
+            buffer(">\r\n")});
+    write_to_client(n);
   }
 
  private:
@@ -127,7 +141,9 @@ class Proxy : public std::enable_shared_from_this<Proxy> {
   std::array<char, 1024> serverToClientBuff_;
   steady_clock::time_point deadline_;
   asio::steady_timer watchdog_timer_;
-  bool stopped_ = false;
+  asio::steady_timer heartbeat_timer_;
+  asio::cancellation_signal heartbeat_signal_;
+  size_t num_hearbeats_ = 0;
 };
 
 void listen(tcp::acceptor& acceptor, tcp::endpoint target) {

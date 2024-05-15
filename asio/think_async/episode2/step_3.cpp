@@ -40,9 +40,10 @@ class Proxy : public std::enable_shared_from_this<Proxy> {
 
  private:
   void stop() {
-    client_.cancel();
-    server_.cancel();
+    client_.close();
+    server_.close();
     watchdog_timer_.cancel();
+    heartbeat_timer_.cancel();
   }
   bool is_stopped() const { return !client_.is_open() && !server_.is_open(); }
 
@@ -61,7 +62,7 @@ class Proxy : public std::enable_shared_from_this<Proxy> {
     });
   }
   void read_from_server() {
-    deadline_ = std::max(deadline_, steady_clock::now() + 10s);
+    // deadline_ = std::max(deadline_, steady_clock::now() + 10s);
     auto self = shared_from_this();
     self->server_.async_read_some(
         buffer(serverToClientBuff_),
@@ -80,22 +81,21 @@ class Proxy : public std::enable_shared_from_this<Proxy> {
   }
   void write_to_client(size_t n) {
     auto self = shared_from_this();
-    asio::async_write(
-        self->client_, buffer(serverToClientBuff_, n),
-        [self](std::error_code ec, size_t n) {
-          if (!ec) {
-            self->read_from_server();
-          } else {
-            self->stop();
-          }
-        });
+    asio::async_write(self->client_, buffer(serverToClientBuff_, n),
+                      [self](std::error_code ec, size_t n) {
+                        if (!ec) {
+                          self->read_from_server();
+                        } else {
+                          self->stop();
+                        }
+                      });
   }
   void read_from_client() {
     deadline_ = std::max(deadline_, steady_clock::now() + 10s);
     auto self = shared_from_this();
     self->client_.async_read_some(buffer(clientToServerBuff_),
                                   [self](std::error_code ec, size_t n) {
-                                    if (!ec && !self->is_stopped()) {
+                                    if (!ec) {
                                       self->write_to_server(n);
                                     } else {
                                       self->stop();
@@ -105,15 +105,14 @@ class Proxy : public std::enable_shared_from_this<Proxy> {
 
   void write_to_server(size_t n) {
     auto self = shared_from_this();
-    asio::async_write(
-        self->server_, buffer(clientToServerBuff_, n),
-        [self](std::error_code ec, size_t n) {
-          if (!ec) {
-            self->read_from_client();
-          } else {
-            self->stop();
-          }
-        });
+    asio::async_write(self->server_, buffer(clientToServerBuff_, n),
+                      [self](std::error_code ec, size_t n) {
+                        if (!ec) {
+                          self->read_from_client();
+                        } else {
+                          self->stop();
+                        }
+                      });
   }
 
   void write_heartbeat_to_client() {
@@ -127,7 +126,7 @@ class Proxy : public std::enable_shared_from_this<Proxy> {
 
   void heartbeat() {
     auto self = shared_from_this();
-    heartbeat_timer_.expires_after(1s);
+    heartbeat_timer_.expires_after(4s);
     heartbeat_timer_.async_wait([self](std::error_code) {
       if (!self->is_stopped()) {
         self->heartbeat_signal_.emit(asio::cancellation_type::total);
