@@ -25,7 +25,7 @@ class MyLibraryConan(ConanFile):
         pass
 
     def requirements(self):
-        self.requires("asio/1.28.2")
+        self.requires("asio/1.30.2")
     
 
     def build(self):

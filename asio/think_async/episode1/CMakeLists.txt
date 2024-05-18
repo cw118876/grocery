@@ -1,7 +1,8 @@
 
-function(build_target target)
+function(build_target fileName)
+  set(target episode1_${fileName})
   add_executable(${target}
-  ${target}.cpp
+    ${fileName}.cpp
   )
   target_compile_features(${target}
   PRIVATE cxx_std_20
@@ -12,12 +13,12 @@ function(build_target target)
   )
 
   target_link_libraries(${target}
-  ${CONAN_LIBS}
+    ${CONAN_LIBS}
   )
 
   install(
     TARGETS ${target}
-    DESTINATION bin
+    DESTINATION bin/episode1/
   )
 endfunction()
 

@@ -1,31 +1,22 @@
-#include <chrono>
-#include <ctime>
 #include <iostream>
 #include <string>
 #include "asio.hpp"
-#include "asio/awaitable.hpp"
-#include "asio/buffer.hpp"
-#include "asio/cancellation_signal.hpp"
 #include "asio/cancellation_type.hpp"
-#include "asio/co_spawn.hpp"
-#include "asio/detached.hpp"
 #include "asio/experimental/as_tuple.hpp"
 #include "asio/experimental/awaitable_operators.hpp"
-#include "asio/io_context.hpp"
-#include "asio/steady_timer.hpp"
-#include "asio/this_coro.hpp"
-#include "asio/use_awaitable.hpp"
 
 using asio::awaitable;
 using asio::cancellation_type;
 using asio::co_spawn;
 using asio::detached;
 using asio::dynamic_buffer;
+using asio::use_awaitable;
 using asio::ip::tcp;
 namespace this_coro = asio::this_coro;
 using namespace asio::experimental::awaitable_operators;
 using std::chrono::steady_clock;
-using namespace std::chrono_literals;
+// using namespace std::chrono_literals;
+using namespace std::literals::chrono_literals;
 
 constexpr auto use_nothrow_awaitable =
     asio::experimental::as_tuple(asio::use_awaitable);
@@ -46,10 +37,20 @@ class MessageReader {
         });
     auto [e, n] = co_await asio::async_read_until(
         stream_, dynamic_buffer(messageBuf_), '|', use_nothrow_awaitable);
-    if ((co_await this_coro::cancellation_state).cancelled() !=
-        cancellation_type::none) {
+    auto cs = co_await this_coro::cancellation_state;
+    if (cs.cancelled() != cancellation_type::none) {
       co_return std::string{};
     }
+
+    /**
+     * @brief the following code doesn't pass build on g++-12,
+     *         but can work on clang++-14
+     *
+     */
+    // if ((co_await this_coro::cancellation_state).cancelled() !=
+    //     cancellation_type::none) {
+    //   co_return std::string{};
+    // }
     co_await this_coro::reset_cancellation_state();
     if (e) {
       co_return std::string{};
