@@ -2,8 +2,7 @@ cmake_minimum_required(VERSION 3.11)
 project(Think_Async)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup()
+find_package(ASIO REQUIRED)
 
 add_definitions(-DCMAKE_VERBOSE_MAKEFILE=ON)
 set(CMAKE_C_FLAGS "-O2 -Wall -Wformat -Wformat=2 -Wconversion -Wimplicit-fallthrough\

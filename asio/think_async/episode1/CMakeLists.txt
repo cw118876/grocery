@@ -13,7 +13,7 @@ function(build_target fileName)
   )
 
   target_link_libraries(${target}
-    ${CONAN_LIBS}
+    PRIVATE asio::asio
   )
 
   install(

@@ -4,27 +4,28 @@ set -e
 
 build_type=Release
 source_dir=$(pwd)
-export_package=0
+export_pkg=0
 
 function do_build() {
-    local build_dir=${source_dir}/build
-    local install_dir=${source_dir}/install
-
+    local build_dir=${source_dir}/build/${build_type}
+    local install_dir=${source_dir}/install/${build_type}
     if [ "${build_type}" = "Release" ]; then 
-       conan install . -if ${build_dir} -pr x64 -s build_type=${build_type} --build missing
+       conan build . -of ${build_dir} -s build_type=${build_type} \
+         --build missing
     else 
-       conan install . -if ${build_dir} -pr x64 -s build_type=${build_type} --build
+       conan build . -of ${build_dir} -s build_type=${build_type} \
+          --build "*"
     fi
-    echo -e "conan install finished"
-    conan build . -bf ${build_dir} -pf ${install_dir}
-    conan package . -bf ${build_dir} -pf ${install_dir}
-
+    echo -e "conan build finished"
+    if [ ${export_pkg} = 1 ]; then
+       conan export-pkg . -of ${build_dir} --user sii --channel test -pr x64 
+    fi  
     echo -e "build success\n"
 
 }
 
 
-while getopts ":b:c" opt; do
+while getopts ":b:ce" opt; do
     case ${opt} in
         b)
             case $OPTARG in
@@ -43,10 +44,14 @@ while getopts ":b:c" opt; do
             esac
             ;;
         c)
-        rm -rf build install
-        echo -e "cleanup success"
-        exit 0
-        ;;
+          rm -rf build install
+          echo -e "cleanup success"
+          exit 0
+          ;;
+        e)
+          echo "export package"
+          export_pkg=1
+          ;;
     esac
 done
 
