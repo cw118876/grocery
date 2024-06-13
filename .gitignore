@@ -3,3 +3,4 @@ install
 build
 .cache
 compile_commands.json
+a.out
