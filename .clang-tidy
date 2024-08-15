@@ -1,0 +1,81 @@
+Checks: |
+  *bugprone*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-forwarding-reference-overload,
+  -bugprone-exception-escape,
+  clang-analyzer-optin.cplusplus.VirtualCall,
+  clang-analyzer-optin.performance.Padding,
+  -clang-diagnostic-float-equal,
+  cppcoreguidelines-init-variables,
+  cppcoreguidelines-prefer-member-initializer,
+  cppcoreguidelines-pro-type-static-cast-downcast,
+  cppcoreguidelines-slicing,
+  google-*,
+  -google-runtime-references,
+  llvm-include-order,
+  llvm-namespace-comment,
+  misc-definitions-in-headers,
+  misc-misplaced-const,
+  misc-non-copyable-objects,
+  misc-static-assert,
+  misc-throw-by-value-catch-by-reference,
+  misc-throw-by-value-catch-by-reference,
+  misc-uniqueptr-reset-release,
+  misc-unused-parameters,
+  modernize*,
+  -modernize-use-trailing-return-type,
+  -modernize-concat-nested-namespaces,
+  -modernize-return-braced-init-list,
+  -modernize-make-unique,
+  -modernize-type-traits,
+  -modernize-macro-to-enum,
+  *performance*,
+  -performance-unnecessary-value-param,
+  -performance-inefficient-string-concatenation,
+  readability-const-return-type,
+  readability-container-size-empty,
+  readability-delete-null-pointer,
+  readability-else-after-return,
+  readability-implicit-bool-conversion,
+  readability-inconsistent-declaration-parameter-name,
+  readability-make-member-function-const,
+  readability-misplaced-array-index,
+  readability-non-const-parameter,
+  readability-qualified-auto,
+  readability-redundant-function-ptr-dereference,
+  readability-redundant-smartptr-get,
+  readability-redundant-string-cstr,
+  readability-simplify-subscript-expr,
+  readability-static-accessed-through-instance,
+  readability-static-definition-in-anonymous-namespace,
+  readability-string-compare,
+  readability-suspicious-call-argument,
+  readability-uniqueptr-delete-release,
+
+WarningsAsErrors: "*"
+
+CheckOptions:
+  - key:             readability-identifier-naming.ClassCase
+    value:           CamelCase
+  - key:             readability-identifier-naming.EnumCase
+    value:           CamelCase
+  - key:             readability-identifier-naming.FunctionCase
+    value:           camelBack
+  # Exclude from scanning as this is an exported symbol used for fuzzing
+  # throughout the code base.
+  - key:             readability-identifier-naming.FunctionIgnoredRegexp
+    value:           "LLVMFuzzerTestOneInput"
+  - key:             readability-identifier-naming.MemberCase
+    value:           CamelCase
+  - key:             readability-identifier-naming.ParameterCase
+    value:           CamelCase
+  - key:             readability-identifier-naming.UnionCase
+    value:           CamelCase
+  - key:             readability-identifier-naming.VariableCase
+    value:           CamelCase
+  - key:             readability-identifier-naming.IgnoreMainLikeFunctions
+    value:           1
+  - key:             readability-redundant-member-init.IgnoreBaseInCopyConstructors
+    value:           1
+  - key:             modernize-use-default-member-init.UseAssignment
+    value:           1
