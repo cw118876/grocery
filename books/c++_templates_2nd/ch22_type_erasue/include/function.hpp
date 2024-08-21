@@ -1,30 +1,29 @@
 #ifndef FUNCTION_HPP_
 #define FUNCTION_HPP_
 
+#include <cstddef>
+#include <exception>
 #include <functional>
 #include <memory>
 #include <type_traits>
 #include <utility>
-#include <exception>
 
 namespace tmp {
 
 template <typename Signature>
 class function;
 
-class bad_function_call: public std::exception {
-public:
-   bad_function_call() noexcept = default;
-   bad_function_call(const bad_function_call&) noexcept = default;
-   bad_function_call& operator=(const bad_function_call&) noexcept = default;
+class bad_function_call : public std::exception {
+ public:
+  bad_function_call() noexcept = default;
+  bad_function_call(const bad_function_call&) noexcept = default;
+  bad_function_call& operator=(const bad_function_call&) noexcept = default;
 
-   ~bad_function_call() override = default;
-   [[nodiscard]] const char* what() const noexcept override;
+  ~bad_function_call() override = default;
+  [[nodiscard]] const char* what() const noexcept override;
 };
 
 namespace detail {
-
-
 
 template <typename Fp>
 bool not_null(const Fp&) {
@@ -119,157 +118,229 @@ void func<Fp, Rp(Args...)>::clone(func_base<Rp(Args...)>* ptr) const {
 }
 template <typename Fp, typename Rp, typename... Args>
 void func<Fp, Rp(Args...)>::destroy() {
-    f_.destroy();
+  f_.destroy();
 }
 template <typename Fp, typename Rp, typename... Args>
 void func<Fp, Rp(Args...)>::purge() {
-    purge(&f_);
+  purge(&f_);
 }
 
 template <typename Fp, typename Rp, typename... Args>
-Rp func<Fp, Rp(Args...)>::operator()(Args &&... args) {
-    return f_(std::forward<Args>(args)...);
+Rp func<Fp, Rp(Args...)>::operator()(Args&&... args) {
+  return f_(std::forward<Args>(args)...);
 }
+
+// std::is_invoke_r will allow Ret of func: Pp, parameter: Args.. convertible to
+// Rp which will cause some problem, when Rp is void
+template <typename Fp, typename Rp, typename... Args>
+struct is_callable {
+  template <typename Up,
+            typename... Uargs,
+            typename = decltype(std::invoke(std::declval<Rp>(),
+                                            std::declval<Uargs>()...))>
+  static std::true_type try_call(void*);
+  // fallback
+  template <typename Up, typename... Uargs>
+  static std::false_type try_call(...);
+
+  using result = decltype(try_call<Fp, Args...>(nullptr));
+
+  using type = std::conditional_t<
+      result::value,
+      std::disjunction<
+          std::is_void<Rp>,
+          std::is_convertible<std::invoke_result_t<Fp, Args...>, Rp>>,
+      std::false_type>;
+  constexpr static bool value = type::value;
+};
 
 template <typename Signature>
 class value_func;
 
-
 template <typename Rp, typename... Args>
 class value_func<Rp(Args...)> {
-    static constexpr size_t kStorageLen = 3 * sizeof(void*);
-    using func_base_type = func_base<Rp(Args...)>;
-    std::aligned_storage_t<kStorageLen> buf_;
-    func_base_type* f_;
-    static func_base_type* as_base(void* ptr) { return reinterpret_cast<func_base_type*>(ptr);}
-    [[nodiscard]] bool self_referential() const noexcept {
-        return f_ == &buf_;
-    }
+  static constexpr size_t kStorageLen = 3 * sizeof(void*);
+  using func_base_type = func_base<Rp(Args...)>;
+  std::aligned_storage_t<kStorageLen> buf_;
+  func_base_type* f_;
+  static func_base_type* as_base(void* ptr) {
+    return reinterpret_cast<func_base_type*>(ptr);
+  }
+  [[nodiscard]] bool self_referential() const noexcept { return f_ == &buf_; }
 
-    void cleanup() {
-        if (f_) {
-            if (self_referential()) {
-                f_->destroy();
-            } else {
-                f_->purge();
-            }
-        }
+  void cleanup() {
+    if (f_) {
+      if (self_referential()) {
+        f_->destroy();
+      } else {
+        f_->purge();
+      }
+    }
+  }
 
-    }
-public:
-    value_func() noexcept: f_(nullptr) {}
+ public:
+  value_func() noexcept : f_(nullptr) {}
 
-    template <typename Fp, typename = std::enable_if_t<std::is_same_v<value_func, std::decay_t<Fp>>>>
-    explicit value_func(Fp&& f): f_(nullptr) {
-        using FunType = func<Fp, Rp(Args...)>;
-        if (not_null(f)) {
-            if constexpr (sizeof(Fp) <= kStorageLen && std::is_nothrow_copy_constructible_v<Fp>) {
-                f_ = ::new (&buf_) FunType(std::forward<Fp>(f));
-            } else {
-                auto ptr = std::make_unique<FunType>(std::forward<Fp>(f));
-                f_ = ptr.release();
-            }
-        }
-    }
-    
-    value_func(const value_func& other): f_(nullptr) {
-        if (other.f_) {
-            if (other.self_referential()) {
-                f_ = as_base(&buf_);
-               other->f_.clone(f_);
-            } else {
-                f_ = other.f_->clone();
-            }
-        }
-    }
-    
-    value_func& operator=(const value_func& other) {
-        if (this != &other) {
-            value_func tmp{other};
-            swap(tmp);           
-        }
-        return *this;
+  template <typename Fp>
+  using EnableIfConstructor = std::enable_if_t<
+      std::conjunction_v<std::is_same<std::decay_t<Fp>, value_func>,
+                         is_callable<Fp, Rp, Args...>>>;
 
+  template <typename Fp, typename = EnableIfConstructor<Fp>>
+  explicit value_func(Fp&& f) : f_(nullptr) {
+    using FunType = func<Fp, Rp(Args...)>;
+    if (not_null(f)) {
+      if constexpr (sizeof(Fp) <= kStorageLen &&
+                    std::is_nothrow_copy_constructible_v<Fp>) {
+        f_ = ::new (&buf_) FunType(std::forward<Fp>(f));
+      } else {
+        auto ptr = std::make_unique<FunType>(std::forward<Fp>(f));
+        f_ = ptr.release();
+      }
     }
-    
-    value_func(value_func&& other) noexcept: f_(nullptr) {
-        if (other.f_) {
-            if (other.self_referential()) {
-                f_ = as_base(&buf_);
-                other.f_->clone(f_);     // TODO(move): handle move semantics
-            } else {
-                f_ = std::exchange(other.f_, nullptr);
-            }
-        }
-    }
-    value_func& operator=(value_func&& other)  noexcept {
-        if (this != &other) {
-            value_func tmp{std::move(other)};
-            swap(tmp);
-        }
-        return *this;
-    }
+  }
 
-
-    ~value_func() {
-        cleanup();
+  value_func(const value_func& other) : f_(nullptr) {
+    if (other.f_) {
+      if (other.self_referential()) {
+        f_ = as_base(&buf_);
+        other->f_.clone(f_);
+      } else {
+        f_ = other.f_->clone();
+      }
     }
+  }
 
-    value_func& operator=(std::nullptr_t) {
-        cleanup();
+  value_func& operator=(const value_func& other) {
+    if (this != &other) {
+      value_func tmp{other};
+      swap(tmp);
+    }
+    return *this;
+  }
+
+  value_func(value_func&& other) noexcept : f_(nullptr) {
+    if (other.f_) {
+      if (other.self_referential()) {
+        f_ = as_base(&buf_);
+        other.f_->clone(f_);  // TODO(move): handle move semantics
+      } else {
+        f_ = std::exchange(other.f_, nullptr);
+      }
+    }
+  }
+  value_func& operator=(value_func&& other) noexcept {
+    if (this != &other) {
+      value_func tmp{std::move(other)};
+      swap(tmp);
+    }
+    return *this;
+  }
+
+  ~value_func() { cleanup(); }
+
+  value_func& operator=(std::nullptr_t) {
+    cleanup();
+    f_ = nullptr;
+    return *this;
+  }
+
+  Rp operator()(Args&&... args) {
+    if (f_ == nullptr) {
+      throw bad_function_call();
+    }
+    return f_->operator()(std::forward<Args>(args)...);
+  }
+
+  void swap(value_func& other) {
+    if (this != &other) {
+      if (self_referential() && other.self_referential()) {
+        std::aligned_storage_t<kStorageLen> tempbuf;
+        func_base_type* ptr = as_base(&tempbuf);
+        other.f_->clone(ptr);
+        other.f_->destroy();
+        other.f_ = nullptr;
+        f_->clone(as_base(&other.buf_));
+        f_->destroy();
         f_ = nullptr;
-        return *this;
+        other.f_ = as_base(&other.buf_);
+
+        ptr->clone(as_base(&buf_));
+        ptr->destroy();
+        f_ = as_base(&buf_);
+      } else if (self_referential()) {
+        auto other_ptr = as_base(&other.buf_);
+        f_->clone(other_ptr);
+        f_->destroy();
+        f_ = other.f_;
+        other.f_ = other_ptr;
+      } else if (other.self_referential()) {
+        other.swap(*this);
+      } else {
+        std::swap(f_, other.f_);
+      }
     }
+  }
 
-    Rp operator()(Args&&... args) {
-        if (f_ == nullptr) {
-            throw bad_function_call();
-
-        }
-        return f_->operator()(std::forward<Args>(args)...);
-    }
-    
-    void swap(value_func& other) {
-        if (this != &other) {
-            if (self_referential() && other.self_referential()) {
-                std::aligned_storage_t<kStorageLen> tempbuf;
-                func_base_type* ptr = as_base(&tempbuf);
-                other.f_->clone(ptr);
-                other.f_->destroy();
-                other.f_ = nullptr;
-                f_->clone(as_base(&other.buf_));
-                f_->destroy();
-                f_ = nullptr;
-                other.f_ = as_base(&other.buf_);
-
-                ptr->clone(as_base(&buf_));
-                ptr->destroy();
-                f_ = as_base(&buf_);
-            } else if (self_referential()) {
-                auto other_ptr = as_base(&other.buf_);
-                f_->clone(other_ptr);
-                f_->destroy();
-                f_ = other.f_;
-                other.f_ = other_ptr;
-            } else if (other.self_referential()) {
-                other.swap(*this);
-            } else {
-                std::swap(f_, other.f_);
-            }
-        }
-    }
-
-    
-
-
-
+  explicit operator bool() const { return f_ != nullptr; }
 };
-
-
-
 
 }  // namespace detail
 
+template <typename Rp, typename... Args>
+class function<Rp(Args...)> {
+  using func_type = detail::value_func<Rp(Args...)>;
+  func_type fun_;
+
+ public:
+  using result_type = Rp;
+  template <typename Fp>
+  using EnableIfConstructor = std::enable_if_t<
+      std::conjunction_v<std::is_same<std::decay_t<Fp>, function>,
+                         detail::is_callable<Fp, Rp, Args...>>>;
+
+  function() = default;
+  explicit function(std::nullptr_t) : fun_(nullptr) {}
+  function(const function& other) : fun_(other.fun_) {}
+  function& operator=(const function& other) {
+    if (this != &other) {
+      function temp{other};
+      swap(temp);
+    }
+    return *this;
+  }
+  function(function&& other) noexcept : fun_(std::move(other.fun_)) {}
+  function& operator=(function other) noexcept {
+    if (this != &other) {
+      function temp{std::move(other)};
+      swap(temp);
+    }
+    return *this;
+  }
+
+  template <typename Fp, typename = EnableIfConstructor<Fp>>
+  explicit function(Fp&& f) : fun_(std::forward<Fp>(f)) {}
+
+  ~function() = default;
+
+  void swap(function& other) noexcept { fun_.swap(other.fun_); }
+  explicit operator bool() const noexcept { return static_cast<bool>(fun_); }
+  Rp operator()(Args&&... args) { return func_(std::forward<Args>(args)...); }
+
+  // deleted overloads, close possible hold in type system
+  template <typename R2, typename... Args2>
+  bool operator=(const function<R2(Args2...)>&) const = delete;
+};
+
+template <typename Rp, typename... Args>
+inline bool operator==(const function<Rp(Args...)>& f, std::nullptr_t) {
+  return !f;
+}
+
+template <typename Rp, typename... Args>
+void swap(function<Rp(Args...)>& lhs, function<Rp(Args...)>& rhs) {
+  return lhs.swap(rhs);
+}
 }  //  namespace tmp
 
 #endif  // FUNCTION_HPP_
