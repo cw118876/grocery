@@ -365,11 +365,7 @@ public:
     }
 };
 
-#ifdef DISABLE_NEW_COUNT
-  const bool MemCounter::disable_checking = true;
-#else
-  const bool MemCounter::disable_checking = false;
-#endif
+
 
 TEST_DIAGNOSTIC_PUSH
 TEST_MSVC_DIAGNOSTIC_IGNORED(4640) // '%s' construction of local static object is not thread safe (/Zc:threadSafeInit-)
@@ -378,12 +374,11 @@ inline MemCounter* getGlobalMemCounter() {
   return &counter;
 }
 TEST_DIAGNOSTIC_POP
-
-MemCounter &globalMemCounter = *getGlobalMemCounter();
+extern MemCounter &globalMemCounter; 
 
 #ifndef DISABLE_NEW_COUNT
 // operator new(size_t[, nothrow_t]) and operator delete(size_t[, nothrow_t])
-void* operator new(std::size_t s) TEST_THROW_SPEC(std::bad_alloc) {
+inline void* operator new(std::size_t s) TEST_THROW_SPEC(std::bad_alloc) {
   getGlobalMemCounter()->newCalled(s);
   if (s == 0)
     ++s;
@@ -393,7 +388,7 @@ void* operator new(std::size_t s) TEST_THROW_SPEC(std::bad_alloc) {
   return p;
 }
 
-void* operator new(std::size_t s, std::nothrow_t const&) TEST_NOEXCEPT {
+inline void* operator new(std::size_t s, std::nothrow_t const&) TEST_NOEXCEPT {
 #  ifdef TEST_HAS_NO_EXCEPTIONS
   getGlobalMemCounter()->newCalled(s);
 #  else
@@ -406,18 +401,18 @@ void* operator new(std::size_t s, std::nothrow_t const&) TEST_NOEXCEPT {
   return std::malloc(s);
 }
 
-void operator delete(void* p) TEST_NOEXCEPT {
+inline void operator delete(void* p) TEST_NOEXCEPT {
   getGlobalMemCounter()->deleteCalled(p);
   std::free(p);
 }
 
-void operator delete(void* p, std::nothrow_t const&) TEST_NOEXCEPT {
+inline void operator delete(void* p, std::nothrow_t const&) TEST_NOEXCEPT {
   getGlobalMemCounter()->deleteCalled(p);
   std::free(p);
 }
 
 // operator new[](size_t[, nothrow_t]) and operator delete[](size_t[, nothrow_t])
-void* operator new[](std::size_t s) TEST_THROW_SPEC(std::bad_alloc) {
+inline void* operator new[](std::size_t s) TEST_THROW_SPEC(std::bad_alloc) {
   getGlobalMemCounter()->newArrayCalled(s);
   if (s == 0)
     s++;
@@ -427,7 +422,7 @@ void* operator new[](std::size_t s) TEST_THROW_SPEC(std::bad_alloc) {
   return p;
 }
 
-void* operator new[](std::size_t s, std::nothrow_t const&) TEST_NOEXCEPT {
+inline void* operator new[](std::size_t s, std::nothrow_t const&) TEST_NOEXCEPT {
 #  ifdef TEST_HAS_NO_EXCEPTIONS
   getGlobalMemCounter()->newArrayCalled(s);
 #  else
@@ -440,12 +435,12 @@ void* operator new[](std::size_t s, std::nothrow_t const&) TEST_NOEXCEPT {
   return std::malloc(s);
 }
 
-void operator delete[](void* p) TEST_NOEXCEPT {
+inline void operator delete[](void* p) TEST_NOEXCEPT {
   getGlobalMemCounter()->deleteArrayCalled(p);
   std::free(p);
 }
 
-void operator delete[](void* p, std::nothrow_t const&) TEST_NOEXCEPT {
+inline void operator delete[](void* p, std::nothrow_t const&) TEST_NOEXCEPT {
   getGlobalMemCounter()->deleteArrayCalled(p);
   std::free(p);
 }
@@ -489,7 +484,7 @@ inline void free_aligned_impl(void* ptr, std::align_val_t) {
 }
 
 // operator new(size_t, align_val_t[, nothrow_t]) and operator delete(size_t, align_val_t[, nothrow_t])
-void* operator new(std::size_t s, std::align_val_t av) TEST_THROW_SPEC(std::bad_alloc) {
+inline void* operator new(std::size_t s, std::align_val_t av) TEST_THROW_SPEC(std::bad_alloc) {
   getGlobalMemCounter()->alignedNewCalled(s, static_cast<std::size_t>(av));
   void* p = allocate_aligned_impl(s, av);
   if (p == nullptr)
@@ -497,7 +492,7 @@ void* operator new(std::size_t s, std::align_val_t av) TEST_THROW_SPEC(std::bad_
   return p;
 }
 
-void* operator new(std::size_t s, std::align_val_t av, std::nothrow_t const&) TEST_NOEXCEPT {
+inline void* operator new(std::size_t s, std::align_val_t av, std::nothrow_t const&) TEST_NOEXCEPT {
 #    ifdef TEST_HAS_NO_EXCEPTIONS
   getGlobalMemCounter()->alignedNewCalled(s, static_cast<std::size_t>(av));
 #    else
@@ -510,18 +505,18 @@ void* operator new(std::size_t s, std::align_val_t av, std::nothrow_t const&) TE
   return allocate_aligned_impl(s, av);
 }
 
-void operator delete(void* p, std::align_val_t av) TEST_NOEXCEPT {
+inline void operator delete(void* p, std::align_val_t av) TEST_NOEXCEPT {
   getGlobalMemCounter()->alignedDeleteCalled(p, static_cast<std::size_t>(av));
   free_aligned_impl(p, av);
 }
 
-void operator delete(void* p, std::align_val_t av, std::nothrow_t const&) TEST_NOEXCEPT {
+inline void operator delete(void* p, std::align_val_t av, std::nothrow_t const&) TEST_NOEXCEPT {
   getGlobalMemCounter()->alignedDeleteCalled(p, static_cast<std::size_t>(av));
   free_aligned_impl(p, av);
 }
 
 // operator new[](size_t, align_val_t[, nothrow_t]) and operator delete[](size_t, align_val_t[, nothrow_t])
-void* operator new[](std::size_t s, std::align_val_t av) TEST_THROW_SPEC(std::bad_alloc) {
+inline void* operator new[](std::size_t s, std::align_val_t av) TEST_THROW_SPEC(std::bad_alloc) {
   getGlobalMemCounter()->alignedNewArrayCalled(s, static_cast<std::size_t>(av));
   void* p = allocate_aligned_impl(s, av);
   if (p == nullptr)
@@ -529,7 +524,7 @@ void* operator new[](std::size_t s, std::align_val_t av) TEST_THROW_SPEC(std::ba
   return p;
 }
 
-void* operator new[](std::size_t s, std::align_val_t av, std::nothrow_t const&) TEST_NOEXCEPT {
+inline void* operator new[](std::size_t s, std::align_val_t av, std::nothrow_t const&) TEST_NOEXCEPT {
 #    ifdef TEST_HAS_NO_EXCEPTIONS
   getGlobalMemCounter()->alignedNewArrayCalled(s, static_cast<std::size_t>(av));
 #    else
@@ -542,12 +537,12 @@ void* operator new[](std::size_t s, std::align_val_t av, std::nothrow_t const&) 
   return allocate_aligned_impl(s, av);
 }
 
-void operator delete[](void* p, std::align_val_t av) TEST_NOEXCEPT {
+inline void operator delete[](void* p, std::align_val_t av) TEST_NOEXCEPT {
   getGlobalMemCounter()->alignedDeleteArrayCalled(p, static_cast<std::size_t>(av));
   free_aligned_impl(p, av);
 }
 
-void operator delete[](void* p, std::align_val_t av, std::nothrow_t const&) TEST_NOEXCEPT {
+inline void operator delete[](void* p, std::align_val_t av, std::nothrow_t const&) TEST_NOEXCEPT {
   getGlobalMemCounter()->alignedDeleteArrayCalled(p, static_cast<std::size_t>(av));
   free_aligned_impl(p, av);
 }

@@ -212,7 +212,7 @@ class value_func<Rp(Args...)> {
     if (other.f_) {
       if (other.self_referential()) {
         f_ = as_base(&buf_);
-        other->f_.clone(f_);
+        other.f_->clone(f_);
       } else {
         f_ = other.f_->clone();
       }
@@ -319,7 +319,7 @@ class function<Rp(Args...)> {
     return *this;
   }
   function(function&& other) noexcept : fun_(std::move(other.fun_)) {}
-  function& operator=(function other) noexcept {
+  function& operator=(function&& other) noexcept {
     if (this != &other) {
       function temp{std::move(other)};
       swap(temp);

@@ -24,11 +24,12 @@
 #include "count_new.h"
 #include "test_macros.h"
 
+namespace {
 class A {
   int data_[10];
 
  public:
-  static int count;
+  inline static int count = 0;
 
   explicit A(int j) {
     ++count;
@@ -52,14 +53,14 @@ class A {
   int id() const { return data_[0]; }
 };
 
-int A::count = 0;
-
-int g(int) {
+static int g(int) {
   return 0;
 }
-int h(int) {
+static int h(int) {
   return 1;
 }
+
+}  // namespace
 
 TEST(FunctionFunc, swap) {
   globalMemCounter.reset();
