@@ -45,15 +45,20 @@ bool not_null(const function<Signature>& f) {
   return !!f;
 }
 
+template <typename Fun, typename Signature>
+class default_alloc_fun;
+
 template <typename Fun, typename Rp, typename... Args>
-class default_alloc_fun {
+class default_alloc_fun<Fun, Rp(Args...)> {
   Fun f_;
 
  public:
   using target_type = Fun;
-  target_type& target() const { return f_; }
-  explicit default_alloc_fun(const target_type& f) : f_(f) {}
+  target_type& target() { return f_; }
+  const target_type& target() const { return f_; }
   explicit default_alloc_fun(target_type&& f) noexcept : f_(std::move(f)) {}
+  explicit default_alloc_fun(const target_type& f) : f_(f) {}
+  
 
   Rp operator()(Args&&... args) {
     return std::invoke(f_, std::forward<Args>(args)...);
@@ -76,6 +81,7 @@ class func_base;
 
 template <typename Rp, typename... Args>
 class func_base<Rp(Args...)> {
+ public:
   using return_type = Rp;
   func_base() = default;
   virtual ~func_base() = default;
@@ -122,7 +128,7 @@ void func<Fp, Rp(Args...)>::destroy() {
 }
 template <typename Fp, typename Rp, typename... Args>
 void func<Fp, Rp(Args...)>::purge() {
-  purge(&f_);
+  default_alloc_fun<Fp, Rp(Args...)>::purge(reinterpret_cast<default_alloc_fun<Fp, Rp(Args...)>*>(this));
 }
 
 template <typename Fp, typename Rp, typename... Args>
@@ -136,7 +142,7 @@ template <typename Fp, typename Rp, typename... Args>
 struct is_callable {
   template <typename Up,
             typename... Uargs,
-            typename = decltype(std::invoke(std::declval<Rp>(),
+            typename = decltype(std::invoke(std::declval<Up>(),
                                             std::declval<Uargs>()...))>
   static std::true_type try_call(void*);
   // fallback
@@ -146,10 +152,10 @@ struct is_callable {
   using result = decltype(try_call<Fp, Args...>(nullptr));
 
   using type = std::conditional_t<
-      result::value,
-      std::disjunction<
-          std::is_void<Rp>,
-          std::is_convertible<std::invoke_result_t<Fp, Args...>, Rp>>,
+      result::value &&
+          (std::is_void_v<Rp> ||
+           std::is_convertible_v<std::invoke_result_t<Fp, Args...>, Rp>),
+      std::true_type,
       std::false_type>;
   constexpr static bool value = type::value;
 };
@@ -166,7 +172,9 @@ class value_func<Rp(Args...)> {
   static func_base_type* as_base(void* ptr) {
     return reinterpret_cast<func_base_type*>(ptr);
   }
-  [[nodiscard]] bool self_referential() const noexcept { return f_ == &buf_; }
+  [[nodiscard]] bool self_referential() const noexcept {
+    return static_cast<void*>(f_) == &buf_;
+  }
 
   void cleanup() {
     if (f_) {
@@ -182,9 +190,9 @@ class value_func<Rp(Args...)> {
   value_func() noexcept : f_(nullptr) {}
 
   template <typename Fp>
-  using EnableIfConstructor = std::enable_if_t<
-      std::conjunction_v<std::is_same<std::decay_t<Fp>, value_func>,
-                         is_callable<Fp, Rp, Args...>>>;
+  using EnableIfConstructor =
+      std::enable_if_t<!std::is_same_v<std::decay_t<Fp>, value_func> &&
+                       is_callable<Fp, Rp, Args...>::value>;
 
   template <typename Fp, typename = EnableIfConstructor<Fp>>
   explicit value_func(Fp&& f) : f_(nullptr) {
@@ -244,6 +252,7 @@ class value_func<Rp(Args...)> {
     f_ = nullptr;
     return *this;
   }
+  explicit value_func(std::nullptr_t) : f_(nullptr){};
 
   Rp operator()(Args&&... args) {
     if (f_ == nullptr) {
@@ -295,12 +304,12 @@ class function<Rp(Args...)> {
  public:
   using result_type = Rp;
   template <typename Fp>
-  using EnableIfConstructor = std::enable_if_t<
-      std::conjunction_v<std::is_same<std::decay_t<Fp>, function>,
-                         detail::is_callable<Fp, Rp, Args...>>>;
+  using EnableIfConstructor = std::enable_if_t<!std::is_same_v<std::decay_t<Fp>, function> &&
+                         !std::is_same_v<std::decay_t<Fp>, std::nullptr_t> &&
+                         detail::is_callable<Fp, Rp, Args...>::value>;
 
   function() = default;
-  explicit function(std::nullptr_t) : fun_(nullptr) {}
+  function(std::nullptr_t) : fun_(nullptr) {}
   function(const function& other) : fun_(other.fun_) {}
   function& operator=(const function& other) {
     if (this != &other) {
@@ -319,7 +328,7 @@ class function<Rp(Args...)> {
   }
 
   template <typename Fp, typename = EnableIfConstructor<Fp>>
-  explicit function(Fp&& f) : fun_(std::forward<Fp>(f)) {}
+  function(Fp f) : fun_(std::forward<Fp>(f)) {}
 
   ~function() = default;
 
@@ -338,7 +347,7 @@ inline bool operator==(const function<Rp(Args...)>& f, std::nullptr_t) {
 }
 
 template <typename Rp, typename... Args>
-void swap(function<Rp(Args...)>& lhs, function<Rp(Args...)>& rhs) {
+void swap(function<Rp(Args...)>& lhs, function<Rp(Args...)>& rhs) noexcept {
   return lhs.swap(rhs);
 }
 }  //  namespace tmp
