@@ -72,7 +72,7 @@ function run_test_suit() {
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PWD}/build/Debug/lib
     execute_executables_in_dir ${PWD}/build/Debug/test
     mkdir -p build/coverage/report
-    gcovr --object-directory build/Debug
+    gcovr --exclude test --object-directory build/Debug
 
     # coverage html
     gcovr --html --html-details -o build/coverage/report/index.html \

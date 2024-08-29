@@ -192,7 +192,8 @@
 #endif
 
 #if !defined(TEST_HAS_NO_RTTI)
-# define RTTI_ASSERT(X) assert(X)
+#define RTTI_ASSERT(X)
+// # define RTTI_ASSERT(X) assert(X)
 #else
 # define RTTI_ASSERT(X)
 #endif

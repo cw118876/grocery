@@ -6,6 +6,7 @@ set(project_test_sources
     unit_test/func/swap.cpp
     unit_test/func/operator_bool.cpp
     unit_test/func/common/copy_assign.cpp
+    unit_test/func/common/copy_move.cpp
 )
 
 add_executable(test.function ${project_test_sources})

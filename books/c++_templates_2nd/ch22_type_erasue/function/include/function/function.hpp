@@ -168,7 +168,7 @@ class value_func<Rp(Args...)> {
   static constexpr size_t kStorageLen = 3 * sizeof(void*);
   using func_base_type = func_base<Rp(Args...)>;
   std::aligned_storage_t<kStorageLen> buf_;
-  func_base_type* f_;
+  func_base_type* f_ {nullptr};
   static func_base_type* as_base(void* ptr) {
     return reinterpret_cast<func_base_type*>(ptr);
   }
@@ -187,7 +187,7 @@ class value_func<Rp(Args...)> {
   }
 
  public:
-  value_func() noexcept : f_(nullptr) {}
+  value_func() = default;
 
   template <typename Fp>
   using EnableIfConstructor =
@@ -334,7 +334,7 @@ class function<Rp(Args...)> {
 
   void swap(function& other) noexcept { fun_.swap(other.fun_); }
   explicit operator bool() const noexcept { return static_cast<bool>(fun_); }
-  Rp operator()(Args&&... args) { return func_(std::forward<Args>(args)...); }
+  Rp operator()(Args&&... args) { return fun_(std::forward<Args>(args)...); }
 
   // deleted overloads, close possible hold in type system
   template <typename R2, typename... Args2>
