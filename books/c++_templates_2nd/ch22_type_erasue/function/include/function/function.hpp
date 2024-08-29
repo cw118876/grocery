@@ -339,7 +339,7 @@ class function<Rp(Args...)> {
 
   void swap(function& other) noexcept { fun_.swap(other.fun_); }
   explicit operator bool() const noexcept { return static_cast<bool>(fun_); }
-  Rp operator()(Args&&... args) { return fun_(std::forward<Args>(args)...); }
+  Rp operator()(Args... args) { return fun_(std::forward<Args>(args)...); }
 
   // deleted overloads, close possible hold in type system
   template <typename R2, typename... Args2>
@@ -349,6 +349,21 @@ class function<Rp(Args...)> {
 template <typename Rp, typename... Args>
 inline bool operator==(const function<Rp(Args...)>& f, std::nullptr_t) {
   return !f;
+}
+
+template <typename Rp, typename... Args>
+inline bool operator==(std::nullptr_t, const function<Rp(Args...)>& f) {
+  return !f;
+}
+
+template <typename Rp, typename... Args>
+inline bool operator!=(const function<Rp(Args...)>& f, std::nullptr_t) {
+  return static_cast<bool>(f);
+}
+
+template <typename Rp, typename... Args>
+inline bool operator!=(std::nullptr_t, const function<Rp(Args...)>& f) {
+  return static_cast<bool>(f);
 }
 
 template <typename Rp, typename... Args>

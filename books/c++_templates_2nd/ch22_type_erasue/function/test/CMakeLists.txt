@@ -9,6 +9,14 @@ set(project_test_sources
     unit_test/func/common/copy_move.cpp
     unit_test/func/common/default.cpp
     unit_test/func/common/F_assign.cpp
+    unit_test/func/common/F_incomplete.cpp
+    unit_test/func/common/F_nullptr.cpp
+    unit_test/func/common/F.cpp
+    unit_test/func/common/nullptr_t_assign.cpp
+    unit_test/func/common/nullptr_t.cpp
+    unit_test/func/common/swap.cpp
+    unit_test/func/invoke.cpp
+    unit_test/func/addressof.cpp
 )
 
 add_executable(test.function ${project_test_sources})
