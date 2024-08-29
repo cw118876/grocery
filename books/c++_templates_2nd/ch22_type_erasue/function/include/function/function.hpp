@@ -59,9 +59,16 @@ class default_alloc_fun<Fun, Rp(Args...)> {
   explicit default_alloc_fun(target_type&& f) noexcept : f_(std::move(f)) {}
   explicit default_alloc_fun(const target_type& f) : f_(f) {}
   
+  
+
+
 
   Rp operator()(Args&&... args) {
-    return std::invoke(f_, std::forward<Args>(args)...);
+    if constexpr (std::is_void_v<Rp>) {
+      std::invoke(f_, std::forward<Args>(args)...);
+    } else {
+      return std::invoke(f_, std::forward<Args>(args)...);
+    }
   }
 
   default_alloc_fun* clone() const {
@@ -128,7 +135,8 @@ void func<Fp, Rp(Args...)>::destroy() {
 }
 template <typename Fp, typename Rp, typename... Args>
 void func<Fp, Rp(Args...)>::purge() {
-  default_alloc_fun<Fp, Rp(Args...)>::purge(reinterpret_cast<default_alloc_fun<Fp, Rp(Args...)>*>(this));
+  default_alloc_fun<Fp, Rp(Args...)>::purge(
+      reinterpret_cast<default_alloc_fun<Fp, Rp(Args...)>*>(this));
 }
 
 template <typename Fp, typename Rp, typename... Args>
@@ -138,25 +146,23 @@ Rp func<Fp, Rp(Args...)>::operator()(Args&&... args) {
 
 // std::is_invoke_r will allow Ret of func: Pp, parameter: Args.. convertible to
 // Rp which will cause some problem, when Rp is void
+
 template <typename Fp, typename Rp, typename... Args>
 struct is_callable {
   template <typename Up,
             typename... Uargs,
-            typename = decltype(std::invoke(std::declval<Up>(),
-                                            std::declval<Uargs>()...))>
-  static std::true_type try_call(void*);
-  // fallback
-  template <typename Up, typename... Uargs>
-  static std::false_type try_call(...);
-
-  using result = decltype(try_call<Fp, Args...>(nullptr));
-
-  using type = std::conditional_t<
-      result::value &&
-          (std::is_void_v<Rp> ||
-           std::is_convertible_v<std::invoke_result_t<Fp, Args...>, Rp>),
+            typename = std::enable_if_t<std::is_invocable_v<Up, Uargs...>>>
+  static auto try_call(void*) -> std::conditional_t<
+      std::is_void_v<Rp> ||
+          std::is_convertible_v<std::invoke_result_t<Up, Uargs...>, Rp>,
       std::true_type,
       std::false_type>;
+  // fallback
+  template <typename Up, typename... Uargs>
+  static auto try_call(...) -> std::false_type;
+
+  using result = decltype(try_call<Fp, Args...>(nullptr));
+  using type = result;
   constexpr static bool value = type::value;
 };
 
@@ -168,7 +174,7 @@ class value_func<Rp(Args...)> {
   static constexpr size_t kStorageLen = 3 * sizeof(void*);
   using func_base_type = func_base<Rp(Args...)>;
   std::aligned_storage_t<kStorageLen> buf_;
-  func_base_type* f_ {nullptr};
+  func_base_type* f_{nullptr};
   static func_base_type* as_base(void* ptr) {
     return reinterpret_cast<func_base_type*>(ptr);
   }
@@ -304,9 +310,8 @@ class function<Rp(Args...)> {
  public:
   using result_type = Rp;
   template <typename Fp>
-  using EnableIfConstructor = std::enable_if_t<!std::is_same_v<std::decay_t<Fp>, function> &&
-                         !std::is_same_v<std::decay_t<Fp>, std::nullptr_t> &&
-                         detail::is_callable<Fp, Rp, Args...>::value>;
+  using EnableLValueIfConstructor =
+      std::enable_if_t<detail::is_callable<Fp&, Rp, Args...>::value>;
 
   function() = default;
   function(std::nullptr_t) : fun_(nullptr) {}
@@ -327,7 +332,7 @@ class function<Rp(Args...)> {
     return *this;
   }
 
-  template <typename Fp, typename = EnableIfConstructor<Fp>>
+  template <typename Fp, typename = EnableLValueIfConstructor<Fp>>
   function(Fp f) : fun_(std::forward<Fp>(f)) {}
 
   ~function() = default;
