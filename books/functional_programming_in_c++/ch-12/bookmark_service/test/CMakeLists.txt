@@ -5,7 +5,6 @@ set(project_test_sources
 
 add_executable(test.bookmark_service ${project_test_sources})
 
-
 find_package(GTest REQUIRED)
 include_directories(${GTEST_INCLUDE_DIRS})
 target_link_libraries(test.bookmark_service

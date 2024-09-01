@@ -39,6 +39,8 @@ class bookmark_serviceConan(ConanFile):
 
 
     def requirements(self):
+        self.requires("asio/1.31.0", headers=True, libs=False)
+        self.requires("nlohmann_json/3.11.3")
         self.test_requires("gtest/1.15.0")
     
 
