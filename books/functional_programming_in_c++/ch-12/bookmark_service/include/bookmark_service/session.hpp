@@ -40,8 +40,8 @@ class session : public std::enable_shared_from_this<session<MsgHandler>> {
 
 template <typename MsgHandler>
 auto make_shared_session(asio::ip::tcp::socket&& sock, MsgHandler h)
-    -> session<MsgHandler> {
-  return session<MsgHandler>{std::move(sock), h};
+    -> std::shared_ptr<session<MsgHandler>> {
+  return std::make_shared<session<MsgHandler>>(std::move(sock), h);
 }
 
 }  // namespace bms

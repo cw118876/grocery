@@ -35,7 +35,7 @@ class service : private source<std::string> {
       if (!ec) {
         auto session =
             make_shared_session(std::move(socket_), get_out_handler());
-        session.start();
+        session->start();
       }
       do_accept();
     });
