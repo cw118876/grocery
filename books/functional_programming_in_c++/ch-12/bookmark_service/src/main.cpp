@@ -1,17 +1,19 @@
 #include <iostream>
 #include <string>
 #include "asio.hpp"
+#include "bookmark_service/receiver.hpp"
 #include "bookmark_service/service.hpp"
 
 int main(int argc, char* argv[]) {
   (void)argc;
   (void)argv;
   asio::io_context io;
-  bms::service svr{io};
-  svr.set_out_handler([](const auto& message){
-    std::cout << message << "\n";
+  auto srv = bms::service(io);
+  auto pipeline = bms::make_receiver(srv, [](const auto& msg) {
+    std::cout << msg << "\n";
   });
-  svr.start();
+  srv.start();
+  (void)pipeline;
   io.run();
 
   return 0;

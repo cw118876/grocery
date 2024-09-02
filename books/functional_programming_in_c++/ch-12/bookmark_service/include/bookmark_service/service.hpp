@@ -15,6 +15,9 @@ class service : private source<std::string> {
  public:
   // using base_type::on_out_message;
   using base_type::set_out_handler;
+  using base_type::out_type;
+  using base_type::out_handler_t;;
+  
   service() = delete;
   service(const service&) = delete;
   service& operator=(const service&) = delete;
