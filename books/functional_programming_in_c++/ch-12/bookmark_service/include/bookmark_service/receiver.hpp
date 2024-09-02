@@ -24,12 +24,27 @@ class Receiver {
   Handler handler_;
 };
 
+template <typename Handler>
+struct receiver_helper {
+    Handler handler_;
+};
+
 }  // namespace detail
+
+template <typename Handler>
+auto receiver(Handler&& h) {
+    return detail::receiver_helper<Handler>{std::forward<Handler>(h)};
+}
 
 template <typename Sender, typename Handler>
 auto make_receiver(Sender& sender, Handler&& h) {
-  return detail::Receiver<Sender, Handler>(sender,
-                                           std::forward<Handler>(h));
+  return detail::Receiver<Sender, Handler>{sender,
+                                           std::forward<Handler>(h)};
+}
+
+template <typename Sender, typename Handler>
+auto operator|(Sender& sender, detail::receiver_helper<Handler> h) {
+    return detail::Receiver<Sender, Handler>(sender, h.handler_);
 }
 
 }  // namespace bms

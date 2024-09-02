@@ -9,9 +9,10 @@ int main(int argc, char* argv[]) {
   (void)argv;
   asio::io_context io;
   auto srv = bms::service(io);
-  auto pipeline = bms::make_receiver(srv, [](const auto& msg) {
+  auto receiver_cout = bms::receiver([](const auto& msg) {
     std::cout << msg << "\n";
   });
+  auto pipeline = srv | receiver_cout;
   srv.start();
   (void)pipeline;
   io.run();
