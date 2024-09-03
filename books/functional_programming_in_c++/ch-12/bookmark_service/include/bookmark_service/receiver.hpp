@@ -15,7 +15,7 @@ class receiver_impl {
  public:
   receiver_impl(Sender&& sender, Handler h)
       : sender_(std::move(sender)), handler_(h) {
-    sender.set_out_handler(
+    sender_.set_out_handler(
         [this](MsgType&& msg) { on_in_message(std::move(msg)); });
   }
 
