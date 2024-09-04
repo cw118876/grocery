@@ -8,6 +8,20 @@
 
 #include "bookmark_service/expect/bad_expected_access.hpp"
 
+#if __cplusplus < 202002L
+namespace std {
+
+template <class T>
+struct remove_cvref {
+  using type = std::remove_cv_t<std::remove_reference_t<T>>;
+};
+
+template <class T>
+using remove_cvref_t = typename remove_cvref<T>::type;
+
+}  // namespace std
+#endif
+
 namespace bms {
 
 struct in_place_t {};
@@ -33,7 +47,7 @@ struct is_generated_from_expected<expected<T, Err>> : std::true_type {};
 template <typename Tp, typename Err>
 class expected {
   static_assert(!std::is_reference_v<Tp> && !std::is_function_v<Tp> &&
-                    !std::is_same_v<std::remove_cv_t<Tp>, in_place_t>,
+                    !std::is_same_v<std::remove_cvref_t<Tp>, in_place_t>,
                 "expected instantiates for reference, function, in_place_t "
                 "will be ill-formed.");
 
@@ -129,12 +143,12 @@ class expected {
 
   template <typename... Args>
   static expected emplace_value(Args&&... args) {
-    return {in_place_t{}, std::forward<Args>(args)...};
+    return expected{in_place_t{}, std::forward<Args>(args)...};
   }
 
   template <typename... Args>
   static expected emplace_error(Args&&... args) {
-    return {unexpected_t{}, std::forward<Args>(args)...};
+    return expected{unexpected_t{}, std::forward<Args>(args)...};
   }
 
   Tp& value() & {
