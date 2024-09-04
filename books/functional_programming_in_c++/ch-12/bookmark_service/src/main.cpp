@@ -33,28 +33,34 @@ std::ostream& operator<<(std::ostream& os, const bookmark_t& page) {
 using expected_bookmark = bms::expected<bookmark_t, std::exception_ptr>;
 
 expected_bookmark bookmark_from_json(const json& data) {
-  return bms::mtry([&] {
-    return bookmark_t{data.at("FirstURL"), data.at("Text")};
-  });
+  return bms::mtry(
+      [&] { return bookmark_t{data.at("FirstURL"), data.at("Text")}; });
 }
 
 int main(int argc, char* argv[]) {
   (void)argc;
   (void)argv;
-  // asio::io_context io;
-  // auto srv = bms::service(io);
-  // auto pipeline =
-  //     srv |
-  //     bms::transform(bms::trim) |
-  //     bms::receiver([](const auto& msg) { std::cout << msg << "\n"; });
-  // ;
-  // srv.start();
-  // (void)pipeline;
-  // io.run();
-  auto pipeline =
-      bms::value{12, 31, 45, 123, 22, 1241, 112, 1, 4, 5} |
-      bms::filter([](const auto& msg) { return !(msg & 1); }) |
-      bms::receiver([](const auto& msg) { std::cout << msg << "\n"; });
+  asio::io_context io;
+  auto pipeline = bms::service(io) | bms::transform(bms::trim) |
+                  bms::filter([](const std::string& msg) {
+                    return msg.length() > 0 && msg[0] != '#';
+                  }) |
+                  bms::transform([](const std::string& msg) {
+                    return bms::mtry([&] { return json::parse(msg); });
+                  }) |
+                  bms::transform([](auto&& exp) {
+                    return exp.and_then(bookmark_from_json);
+                  }) |
+                  bms::receiver([](const auto& bookmark) {
+                    if (!bookmark) {
+                      std::cerr << "Error: request was not understood\n";
+                      return;
+                    }
+                    std::cout << bookmark.value() << "\n";
+                  });
+  ;
+  (void)pipeline;
+  io.run();
 
   return 0;
 }

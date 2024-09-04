@@ -275,7 +275,7 @@ class expected {
     if (!has_value()) {
       return U(unexpected_t{}, error_);
     }
-    return U{in_place_t{}, std::invoke(std::forward<F>(f), value_)};
+    return std::invoke(std::forward<F>(f), value_);
   }
 
   template <
@@ -291,7 +291,7 @@ class expected {
     if (!has_value()) {
       return U(unexpected_t{}, error_);
     }
-    return U{in_place_t{}, std::invoke(std::forward<F>(f), value_)};
+    return std::invoke(std::forward<F>(f), value_);
   }
 
   template <class F,
@@ -306,7 +306,7 @@ class expected {
     if (!has_value()) {
       return U(unexpected_t{}, std::move(error_));
     }
-    return U{in_place_t{}, std::invoke(std::forward<F>(f), std::move(value_))};
+    return std::invoke(std::forward<F>(f), std::move(value_));
   }
 
   template <
@@ -322,7 +322,7 @@ class expected {
     if (!has_value()) {
       return U(unexpected_t{}, std::move(error_));
     }
-    return U{in_place_t{}, std::invoke(std::forward<F>(f), std::move(value_))};
+    return std::invoke(std::forward<F>(f), std::move(value_));
   }
 
   template <class F,
@@ -401,7 +401,7 @@ class expected {
     static_assert(std::is_same_v<typename U::value_type, Tp>,
                   "value type of F should be same as value type of expected");
     if (!has_value()) {
-      return U{unexpected_t{}, std::invoke(std::forward<F>(f), error_)};
+      return std::invoke(std::forward<F>(f), error_);
     }
     return U{in_place_t{}, value_};
   }
@@ -416,7 +416,7 @@ class expected {
     static_assert(std::is_same_v<typename U::value_type, Tp>,
                   "value type of F should be same as value type of expected");
     if (!has_value()) {
-      return U{unexpected_t{}, std::invoke(std::forward<F>(f), error_)};
+      return std::invoke(std::forward<F>(f), error_);
     }
     return U{in_place_t{}, value_};
   }
@@ -431,8 +431,7 @@ class expected {
     static_assert(std::is_same_v<typename U::value_type, Tp>,
                   "value type of F should be same as value type of expected");
     if (!has_value()) {
-      return U{unexpected_t{},
-               std::invoke(std::forward<F>(f), std::move(error_))};
+      return std::invoke(std::forward<F>(f), std::move(error_));
     }
     return U{in_place_t{}, std::move(value_)};
   }
@@ -448,8 +447,7 @@ class expected {
     static_assert(std::is_same_v<typename U::value_type, Tp>,
                   "value type of F should be same as value type of expected");
     if (!has_value()) {
-      return U{unexpected_t{},
-               std::invoke(std::forward<F>(f), std::move(error_))};
+      return std::invoke(std::forward<F>(f), std::move(error_));
     }
     return U{in_place_t{}, std::move(value_)};
   }

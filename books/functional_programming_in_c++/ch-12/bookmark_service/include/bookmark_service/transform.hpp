@@ -16,8 +16,8 @@ class transform_impl {
   using in_type = typename Sender::out_type;
   using out_type = std::invoke_result_t<Transformer, in_type>;
 
-  transform_impl(Sender& sender, Transformer tran)
-      : sender_{sender}, tran_{tran} {}
+  transform_impl(Sender&& sender, Transformer tran)
+      : sender_{std::move(sender)}, tran_{tran} {}
 
   template <typename Handler>
   void set_out_handler(Handler&& h) {
@@ -31,7 +31,7 @@ class transform_impl {
   }
 
  private:
-  Sender& sender_;
+  Sender sender_;
   Transformer tran_;
   std::function<void(out_type&&)> out_handler_ = &noop_out_handler<out_type>;
 };
@@ -55,8 +55,8 @@ auto make_transform(Sender&& sender, Transform&& f) {
 }
 
 template <typename Sender, typename Transform>
-auto operator|(Sender& sender, detail::transform_helper<Transform> h) {
-  return detail::transform_impl<Sender, Transform>{sender, h.tran_};
+auto operator|(Sender&& sender, detail::transform_helper<Transform> h) {
+  return make_transform(std::forward<Sender>(sender), h.tran_);
 }
 
 }  // namespace bms

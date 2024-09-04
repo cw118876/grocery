@@ -40,17 +40,13 @@ auto receiver(Handler&& h) {
 
 template <typename Sender, typename Handler>
 auto make_receiver(Sender&& sender, Handler&& h) {
-  static_assert(std::is_rvalue_reference_v<Sender&&>,
-                "make_receiver only accept rvalue reference");
-  return detail::receiver_impl<Sender, Handler>{std::move(sender),
+  return detail::receiver_impl<Sender, Handler>{std::forward<Sender>(sender),
                                                 std::forward<Handler>(h)};
 }
 
 template <typename Sender, typename Handler>
 auto operator|(Sender&& sender, detail::receiver_helper<Handler> h) {
-  static_assert(std::is_rvalue_reference_v<Sender&&>,
-                "make_receiver only accept rvalue reference");
-  return detail::receiver_impl<Sender, Handler>(std::move(sender), h.handler_);
+  return make_receiver(std::forward<Sender>(sender), h.handler_);
 }
 
 }  // namespace bms

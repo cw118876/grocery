@@ -13,7 +13,7 @@ template <typename Sender, typename Predictor>
 class filter_impl {
  public:
   using out_type = typename Sender::out_type;
-  filter_impl(Sender&& sender, Predictor pred) : sender_{sender}, pred_(pred) {}
+  filter_impl(Sender&& sender, Predictor pred) : sender_{std::move(sender)}, pred_(pred) {}
 
   template <typename Handler>
   void set_out_handler(Handler h) {
