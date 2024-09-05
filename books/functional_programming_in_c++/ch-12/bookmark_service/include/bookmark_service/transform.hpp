@@ -23,10 +23,10 @@ class transform_impl {
   void set_out_handler(Handler&& h) {
     out_handler_ = std::forward<Handler>(h);
     sender_.set_out_handler(
-        [this](out_type&& msg) { on_out_message(std::move(msg)); });
+        [this](in_type&& msg) { on_out_message(std::move(msg)); });
   }
 
-  void on_out_message(out_type&& msg) {
+  void on_out_message(in_type&& msg) {
     out_handler_(std::invoke(tran_, std::move(msg)));
   }
 

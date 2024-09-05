@@ -78,11 +78,11 @@ class expected {
 
   template <typename... Args>
   explicit expected(in_place_t, Args&&... args)
-      : value_(Tp{std::forward<Args>(args)...}) {}
+      : value_(std::forward<Args>(args)...) {}
 
   template <typename... Args>
   explicit expected(unexpected_t, Args&&... args)
-      : error_(Err{std::forward<Args>(args)...}), has_val_(false) {}
+      : error_(std::forward<Args>(args)...), has_val_(false) {}
 
   ~expected() { clean_up(); }
   expected(const expected& other) : has_val_(other.has_val_) {
