@@ -10,7 +10,17 @@ add_executable(sync_test
 )
 
 
+add_executable(thread_test
+  src/thread_test.cpp
+)
+
+
 install(
   TARGETS sync_test
+  DESTINATION bin/
+)
+
+install(
+  TARGETS thread_test
   DESTINATION bin/
 )
